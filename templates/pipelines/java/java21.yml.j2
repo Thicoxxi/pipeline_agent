@@ -1,0 +1,15 @@
+stages:
+  - build
+  - test
+
+image: eclipse-temurin:21
+
+build:
+  stage: build
+  script:
+    - ./gradlew build
+
+test:
+  stage: test
+  script:
+    - ./gradlew test

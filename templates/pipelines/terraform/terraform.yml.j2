@@ -1,0 +1,36 @@
+stages:
+  - validate
+  - plan
+  - apply
+
+image: hashicorp/terraform:1.7.5
+
+variables:
+  TF_ROOT: "infra"
+  TF_IN_AUTOMATION: "true"
+
+before_script:
+  - cd $TF_ROOT
+
+validate:
+  stage: validate
+  script:
+    - terraform init -backend=false
+    - terraform validate
+
+plan:
+  stage: plan
+  script:
+    - terraform init
+    - terraform plan -out=tfplan
+  artifacts:
+    paths:
+      - $TF_ROOT/tfplan
+
+apply:
+  stage: apply
+  script:
+    - terraform apply -auto-approve tfplan
+  when: manual
+  only:
+    - main
