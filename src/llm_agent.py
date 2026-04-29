@@ -1,6 +1,11 @@
 import os
 from openai import OpenAI
+from dotenv import load_dotenv
 
+# Carrega variáveis do arquivo .env
+load_dotenv()
+
+# Inicializa clientes com as variáveis de ambiente
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 groq_client = OpenAI(

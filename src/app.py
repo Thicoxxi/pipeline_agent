@@ -1,8 +1,12 @@
+import os
+import json
+import yaml
 from flask import Flask, render_template, request, Response
 from llm_agent import stream_llm
-import yaml
-import json
-import os
+from dotenv import load_dotenv  # <-- importa dotenv
+
+# Carrega variáveis do arquivo .env
+load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -31,7 +35,6 @@ def stream():
                 return
 
             full += chunk
-
             yield f"data: {json.dumps({'chunk': chunk, 'provider': prov})}\n\n"
 
         try:
