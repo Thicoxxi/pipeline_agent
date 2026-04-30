@@ -1,12 +1,14 @@
 import os
 import json
 import yaml
+import logging
 from flask import Flask, render_template, request, Response
+from dotenv import load_dotenv
 from llm_agent import stream_llm
-from dotenv import load_dotenv  # <-- importa dotenv
 
-# Carrega variáveis do arquivo .env
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -16,27 +18,37 @@ app = Flask(
     static_folder=os.path.join(BASE_DIR, "..", "static")
 )
 
+
 @app.route("/")
 def home():
     return render_template("index.html")
 
+
 @app.route("/api/stream", methods=["POST"])
 def stream():
-    data = request.json
-    prompt = data.get("prompt")
+    data = request.get_json(force=True)
+
+    prompt = data.get("prompt", "").strip()
     provider = data.get("provider", "auto")
+
+    if not prompt:
+        return {"error": "Prompt vazio"}, 400
 
     def generate():
         full = ""
 
-        for chunk, prov in stream_llm(prompt, provider):
-            if "ERROR:" in chunk:
-                yield f"data: {json.dumps({'error': chunk})}\n\n"
-                return
+        try:
+            for chunk, prov in stream_llm(prompt, provider):
+                full += chunk
 
-            full += chunk
-            yield f"data: {json.dumps({'chunk': chunk, 'provider': prov})}\n\n"
+                yield f"data: {json.dumps({'chunk': chunk, 'provider': prov})}\n\n"
 
+        except Exception as e:
+            logging.exception("Erro no streaming")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            return
+
+        # Validação YAML
         try:
             yaml.safe_load(full)
             validation = "✅ YAML válido"
@@ -45,7 +57,15 @@ def stream():
 
         yield f"data: {json.dumps({'validation': validation})}\n\n"
 
-    return Response(generate(), mimetype="text/event-stream")
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no"  # importante p/ nginx
+        }
+    )
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

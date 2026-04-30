@@ -26,7 +26,7 @@ function addMessage(html, type="ai") {
 }
 
 // -----------------------------
-// TYPE HTML (REAL)
+// TYPE HTML (EFEITO REAL)
 // -----------------------------
 function typeHTML(element, html, speed = 12) {
   const temp = document.createElement("div");
@@ -48,7 +48,6 @@ function typeHTML(element, html, speed = 12) {
 
   let currentNode = element;
   let stack = [];
-
   let i = 0;
 
   function process() {
@@ -255,6 +254,12 @@ async function sendMessage() {
 
       const json = JSON.parse(p.replace("data: ", ""));
 
+      if (json.error) {
+        spinner.remove();
+        code.textContent = "❌ Erro: " + json.error;
+        return;
+      }
+
       if (json.chunk) {
         full += json.chunk;
         code.textContent = full;
@@ -262,10 +267,13 @@ async function sendMessage() {
       }
 
       if (json.provider) {
-        providerLabel.textContent =
-          json.provider === "openai" ? "🤖 OpenAI" :
-          json.provider === "groq" ? "⚡ Groq" :
-          "🧠 Local";
+        if (json.provider === "openai") {
+          providerLabel.textContent = "🤖 OpenAI";
+        } else if (json.provider === "groq") {
+          providerLabel.textContent = "⚡ Groq";
+        } else {
+          providerLabel.textContent = "🧠 Local";
+        }
       }
 
       if (json.validation) {
