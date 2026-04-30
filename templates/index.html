@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pipeline Generator</title>
 
-  <!-- CSS -->
+  <!-- CSS (Flask static) -->
   <link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
 
-  <!-- Prism -->
+  <!-- Prism (syntax highlight) -->
   <link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.css" rel="stylesheet" />
 
-  <!-- YAML -->
+  <!-- YAML parser -->
   <script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
 
   <!-- Autocomplete -->
@@ -39,7 +39,7 @@
       <textarea id="chatInput" placeholder="Descreva seu pipeline..."></textarea>
     </div>
 
-    <button id="sendBtn">Enviar 🚀</button>
+    <button id="sendBtn">Enviar</button>
 
   </div>
 </footer>
