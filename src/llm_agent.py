@@ -8,11 +8,14 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from jinja2 import Environment, FileSystemLoader
 
+# Carrega variáveis de ambiente do arquivo .env
 load_dotenv()
+
+# Configuração básica de logging
 logging.basicConfig(level=logging.INFO)
 
 # -----------------------------
-# CONFIG
+# CONFIGURAÇÃO DE TEMPLATES
 # -----------------------------
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -33,7 +36,7 @@ env = Environment(
 )
 
 # -----------------------------
-# CLIENTS
+# CLIENTES LLM
 # -----------------------------
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -54,9 +57,19 @@ Apenas o conteúdo do arquivo .gitlab-ci.yml.
 """
 
 # -----------------------------
-# TEMPLATE (LOCAL)
+# DETECÇÃO DE STACK
 # -----------------------------
 def detect_stack(prompt: str) -> str:
+    """
+    Detecta a stack de tecnologia a partir do texto do prompt.
+
+    Args:
+        prompt (str): Texto fornecido pelo usuário descrevendo o projeto.
+
+    Returns:
+        str: Nome da stack detectada (ex: "dotnet10", "python", "java").
+             Retorna "unknown" se nenhuma stack for identificada.
+    """
     p = prompt.lower()
 
     if "dotnet 10" in p or "net 10" in p:
@@ -78,11 +91,30 @@ def detect_stack(prompt: str) -> str:
 
 
 def render_template(template_path: Path) -> str:
+    """
+    Renderiza um template Jinja2 e retorna o conteúdo como string.
+
+    Args:
+        template_path (Path): Caminho para o arquivo de template.
+
+    Returns:
+        str: Conteúdo renderizado do template.
+    """
     template = env.get_template(template_path.name)
     return template.render()
 
 
-def stream_local(prompt):
+def stream_local(prompt: str) -> Generator[Tuple[str, str], None, None]:
+    """
+    Gera YAML a partir de templates locais.
+    Caso a stack não seja reconhecida, retorna um fallback genérico.
+
+    Args:
+        prompt (str): Texto fornecido pelo usuário.
+
+    Yields:
+        Tuple[str, str]: Caracteres do YAML e o provider ("local").
+    """
     stack = detect_stack(prompt)
 
     if stack in TEMPLATES:
@@ -93,7 +125,6 @@ def stream_local(prompt):
             yield c, "local"
         return
 
-    # fallback local genérico
     yaml_fallback = """stages:
   - build
 
@@ -107,9 +138,21 @@ build:
 
 
 # -----------------------------
-# CORE STREAM LLM
+# STREAMING DE RESPOSTAS LLM
 # -----------------------------
-def _stream(client, model: str, prompt: str, provider: str):
+def _stream(client, model: str, prompt: str, provider: str) -> Generator[Tuple[str, str], None, None]:
+    """
+    Função genérica para streaming de respostas de um LLM.
+
+    Args:
+        client (OpenAI): Cliente configurado (OpenAI ou Groq).
+        model (str): Nome do modelo a ser utilizado.
+        prompt (str): Texto fornecido pelo usuário.
+        provider (str): Nome do provedor ("openai" ou "groq").
+
+    Yields:
+        Tuple[str, str]: Fragmentos do YAML e o nome do provider.
+    """
     try:
         stream = client.chat.completions.create(
             model=model,
@@ -131,18 +174,45 @@ def _stream(client, model: str, prompt: str, provider: str):
         raise RuntimeError(f"{provider} error: {e}")
 
 
-def stream_openai(prompt):
+def stream_openai(prompt: str) -> Generator[Tuple[str, str], None, None]:
+    """
+    Streaming usando OpenAI GPT-4o-mini.
+
+    Args:
+        prompt (str): Texto fornecido pelo usuário.
+
+    Returns:
+        Generator: Fragmentos do YAML e provider "openai".
+    """
     return _stream(openai_client, "gpt-4o-mini", prompt, "openai")
 
 
-def stream_groq(prompt):
+def stream_groq(prompt: str) -> Generator[Tuple[str, str], None, None]:
+    """
+    Streaming usando Groq LLaMA 3.3.
+
+    Args:
+        prompt (str): Texto fornecido pelo usuário.
+
+    Returns:
+        Generator: Fragmentos do YAML e provider "groq".
+    """
     return _stream(groq_client, "llama-3.3-70b-versatile", prompt, "groq")
 
 
 # -----------------------------
-# VALIDAÇÃO
+# VALIDAÇÃO DE YAML
 # -----------------------------
 def is_valid_yaml(content: str) -> bool:
+    """
+    Verifica se o conteúdo fornecido é um YAML válido.
+
+    Args:
+        content (str): Texto YAML a ser validado.
+
+    Returns:
+        bool: True se o YAML for válido e não vazio, False caso contrário.
+    """
     try:
         yaml.safe_load(content)
         return len(content.strip()) > 20
@@ -151,26 +221,28 @@ def is_valid_yaml(content: str) -> bool:
 
 
 # -----------------------------
-# ORCHESTRATOR
+# ORQUESTRADOR
 # -----------------------------
-def stream_llm(prompt, provider="auto"):
+def stream_llm(prompt: str, provider: str = "auto") -> Generator[Tuple[str, str], None, None]:
+    """
+    Orquestra a geração de YAML utilizando múltiplos providers.
 
+    Args:
+        prompt (str): Texto fornecido pelo usuário.
+        provider (str, optional): Provider específico ("openai", "groq", "local").
+                                  Se "auto", tenta todos em ordem de prioridade.
+
+    Yields:
+        Tuple[str, str]: Fragmentos do YAML e o provider utilizado.
+    """
     if provider == "openai":
         providers = [stream_openai]
-
     elif provider == "groq":
         providers = [stream_groq]
-
     elif provider == "local":
         providers = [stream_local]
-
     else:
-        # 🔥 PRIORIDADE LLM
-        providers = [
-            stream_openai,
-            stream_groq,
-            stream_local
-        ]
+        providers = [stream_openai, stream_groq, stream_local]
 
     last_error = None
 
@@ -184,7 +256,6 @@ def stream_llm(prompt, provider="auto"):
                 full += chunk
                 yield chunk, prov
 
-            # 🔥 VALIDAÇÃO REAL (ESSENCIAL)
             if not is_valid_yaml(full):
                 raise RuntimeError("YAML inválido ou vazio")
 
@@ -195,7 +266,6 @@ def stream_llm(prompt, provider="auto"):
             last_error = e
             logging.warning(f"{fn.__name__} falhou: {e}")
 
-    # fallback final garantido (local)
     logging.error("Todos providers falharam")
 
     for chunk, prov in stream_local(prompt):
