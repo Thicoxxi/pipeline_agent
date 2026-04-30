@@ -16,6 +16,23 @@ function showWelcome(){
       <span class="chip">pipeline python pytest</span>
       <span class="chip">pipeline docker build push</span>
       <span class="chip">pipeline java maven</span>
+      <span class="chip">pipeline java spring</span>
+      <span class="chip">pipeline java gradle</span>
+      <span class="chip">pipeline nodejs npm</span>
+      <span class="chip">pipeline nodejs express</span>
+      <span class="chip">pipeline nodejs jest</span>
+      <span class="chip">pipeline java python 3.13 com pyinstaller</span>
+      <span class="chip">pipeline .NET Core 9 para Linux com variavel de ambiente para solution.sln</span>
+      <span class="chip">pipeline .NET Core 9 para Windows com variavel de ambiente para solution.sln</span>
+      <span class="chip">pipeline nodejs 20</span>
+      <span class="chip">pipeline .NET Framework 4.8 com variavel de ambiente para solution.sln</span>
+      <span class="chip">pipeline golang 1.20</span>
+      <span class="chip">pipeline rust</span>
+      <span class="chip">pipeline android</span>
+      <span class="chip">pipeline ios</span>
+      <span class="chip">pipeline terraform para AWS</span>
+      <span class="chip">pipeline terraform para Azure</span>
+      <span class="chip">pipeline terraform para GCP</span>      
     </div>
   `;
 
