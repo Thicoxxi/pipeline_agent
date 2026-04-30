@@ -2,9 +2,11 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pipeline Generator</title>
 
-  <link rel="stylesheet" href="/static/chat.css">
+  <!-- CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
 
   <!-- Prism -->
   <link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.css" rel="stylesheet" />
@@ -21,10 +23,9 @@
 
 <header>🚀 Pipeline Generator</header>
 
-<div id="messages"></div>
+<main id="messages"></main>
 
-<!-- INPUT NOVO -->
-<div class="input-wrapper">
+<footer class="input-wrapper">
   <div class="input-area">
 
     <select id="provider">
@@ -38,16 +39,17 @@
       <textarea id="chatInput" placeholder="Descreva seu pipeline..."></textarea>
     </div>
 
-    <div class="send-wrapper">
-      <button id="sendBtn">Enviar 🚀</button>
-    </div>
+    <button id="sendBtn">Enviar 🚀</button>
 
   </div>
-</div>
+</footer>
 
+<!-- Prism -->
 <script src="https://cdn.jsdelivr.net/npm/prismjs/prism.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-yaml.min.js"></script>
 
-<script src="/static/chat.js"></script>
+<!-- JS -->
+<script src="{{ url_for('static', filename='chat.js') }}"></script>
+
 </body>
 </html>
