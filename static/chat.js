@@ -1,213 +1,171 @@
 document.addEventListener("DOMContentLoaded", () => {
 
-  const messages = document.getElementById("messages");
-  const input = document.getElementById("chatInput");
-  const sendBtn = document.getElementById("sendBtn");
-  const providerSel = document.getElementById("provider");
+const input = document.getElementById("chatInput");
+const messages = document.getElementById("messages");
+const sendBtn = document.getElementById("sendBtn");
 
-  let welcomeVisible = true;
+function showWelcome(){
+  const div = document.createElement("div");
+  div.className = "welcome-box";
 
-  // Auto expand
-  input.addEventListener("input", () => {
-    input.style.height = "auto";
-    input.style.height = Math.min(input.scrollHeight, 360) + "px";
-  });
+  div.innerHTML = `
+    <h2>👋 Olá!</h2>
+    <p>Sou seu assistente para criar pipelines 🚀</p>
 
-  // Enter to send
-  input.addEventListener("keydown", e => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
+    <div class="chips">
+      <span class="chip">pipeline python pytest</span>
+      <span class="chip">pipeline docker build push</span>
+      <span class="chip">pipeline java maven</span>
+    </div>
+  `;
+
+  messages.appendChild(div);
+
+  // 🔥 AGORA FUNCIONA
+  const chips = div.querySelectorAll(".chip");
+  chips.forEach(chip => {
+    chip.addEventListener("click", () => {
+      input.value = chip.textContent;
+
+      // opcional: já envia automaticamente
       sendBtn.click();
-    }
-  });
-
-  // Autocomplete
-  new Awesomplete(input, {
-    list: [
-      "stages", "build", "test", "deploy",
-      "image", "services", "before_script",
-      "script", "after_script", "rules",
-      "tags", "variables", "cache"
-    ],
-    minChars: 1
-  });
-
-  function scrollBottom() {
-    messages.scrollTop = messages.scrollHeight;
-  }
-
-  function showWelcome() {
-    const div = document.createElement("div");
-    div.className = "welcome-box";
-    div.innerHTML = `
-      <h2>👋 Olá!</h2>
-      <p>Gere pipelines GitLab automaticamente</p>
-      <div class="chips">
-        <div class="chip">pipeline java com build e test</div>
-        <div class="chip">pipeline docker build e push</div>
-        <div class="chip">pipeline python com pytest</div>
-      </div>
-    `;
-    div.querySelectorAll(".chip").forEach(c => {
-      c.onclick = () => { input.value = c.innerText; input.focus(); };
     });
-    messages.appendChild(div);
-  }
+  });
+}
 
-  function addUser(text) {
-    const d = document.createElement("div");
-    d.className = "msg user";
-    d.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>`;
-    messages.appendChild(d);
-    scrollBottom();
-  }
+function clearWelcome(){
+  const w=document.querySelector(".welcome-box");
+  if(w) w.remove();
+}
 
-  function createAICodeBlock() {
-    const wrapper = document.createElement("div");
-    wrapper.className = "msg ai";
+function getProviderIcon(p){
+  if(p==="openai") return "🧠 OpenAI";
+  if(p==="groq") return "⚡ Groq";
+  if(p==="local") return "💻 Local";
+  return "🤖 Auto";
+}
 
-    const bubble = document.createElement("div");
-    bubble.className = "bubble";
+function validateYAML(y){
+  try{jsyaml.load(y);return true}catch{return false}
+}
 
-    const actions = document.createElement("div");
-    actions.className = "actions";
-
-    const copyBtn = document.createElement("button");
-    copyBtn.className = "action-btn";
-    copyBtn.textContent = "📋 copiar";
-
-    const downloadBtn = document.createElement("button");
-    downloadBtn.className = "action-btn";
-    downloadBtn.textContent = "⬇️ baixar";
-
-    const spinner = document.createElement("div");
-    spinner.className = "spinner";
-
-    const pre = document.createElement("pre");
-    const code = document.createElement("code");
-    code.classList.add("language-yaml", "typing");
-
-    const validationDiv = document.createElement("div");
-    validationDiv.className = "validation";
-
-    pre.appendChild(code);
-    actions.appendChild(copyBtn);
-    actions.appendChild(downloadBtn);
-    bubble.appendChild(actions);
-    bubble.appendChild(spinner);
-    bubble.appendChild(pre);
-    bubble.appendChild(validationDiv);
-    wrapper.appendChild(bubble);
-    messages.appendChild(wrapper);
-
-    copyBtn.onclick = () => navigator.clipboard.writeText(code.textContent || "");
-    downloadBtn.onclick = () => {
-      const blob = new Blob([code.textContent || ""], { type: "text/yaml" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = ".gitlab-ci.yml";
-      a.click();
-      URL.revokeObjectURL(a.href);
-    };
-
-    return { wrapper, code, spinner, validationDiv };
-  }
-
-  function validateYAML(yamlText) {
-    try {
-      jsyaml.load(yamlText);
-      return { valid: true };
-    } catch (e) {
-      return { valid: false, error: e.message };
-    }
-  }
-
-  function escapeHtml(s) {
-    return s.replace(/[&<>"']/g, c => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    }[c]));
-  }
-
-  async function sendMessage() {
-    const prompt = input.value.trim();
-    const provider = providerSel.value;
-    if (!prompt) return;
-
-    if (welcomeVisible) {
-      messages.innerHTML = "";
-      welcomeVisible = false;
-    }
-
-    addUser(prompt);
-    input.value = "";
-    input.style.height = "auto";
-
-    const { code, spinner, validationDiv } = createAICodeBlock();
-    scrollBottom();
-
-    const res = await fetch("/api/stream", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, provider })
-    });
-
-    if (!res.ok || !res.body) {
-      spinner.remove();
-      validationDiv.textContent = "❌ erro ao conectar";
-      validationDiv.classList.add("invalid");
-      return;
-    }
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-
-    let fullText = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      const parts = chunk.split("\n\n");
-
-      for (let p of parts) {
-        if (!p.startsWith("data:")) continue;
-        const payload = p.replace(/^data:\s*/, "");
-
-        try {
-          const json = JSON.parse(payload);
-
-          if (json.chunk !== undefined) {
-            fullText += json.chunk;
-            code.textContent = fullText;
-            scrollBottom();
-          }
-
-          if (json.validation) {
-            // optional server signal
-          }
-        } catch (e) {
-          // ignore partial frames
-        }
+// 🔥 CONVERTER SIMPLES
+function convertToGitHub(yaml){
+  try{
+    const parsed = jsyaml.load(yaml);
+    let jobs = "";
+    for(const key in parsed){
+      if(parsed[key].script){
+        jobs += `
+  ${key}:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run ${key}
+        run: |
+${parsed[key].script.map(s=>"          "+s).join("\n")}
+`;
       }
     }
 
-    // finalize
-    spinner.remove();
-    code.classList.remove("typing");
-    Prism.highlightElement(code);
+    return `name: CI
 
-    const result = validateYAML(fullText);
-    if (result.valid) {
-      validationDiv.textContent = "✅ YAML válido";
-      validationDiv.classList.add("valid");
-    } else {
-      validationDiv.textContent = "❌ " + result.error;
-      validationDiv.classList.add("invalid");
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+${jobs}`;
+  }catch{
+    return "# erro ao converter";
+  }
+}
+
+function createBlock(provider){
+  const wrap=document.createElement("div");
+
+  const providerTag=document.createElement("div");
+  providerTag.className="provider-tag";
+  providerTag.textContent=getProviderIcon(provider);
+
+  const actions=document.createElement("div");
+
+  const copy=document.createElement("button");
+  copy.textContent="📋 copiar";
+
+  const gitlab=document.createElement("button");
+  gitlab.textContent="⬇️ gitlab";
+
+  const github=document.createElement("button");
+  github.textContent="⬇️ github";
+
+  const pre=document.createElement("pre");
+  const code=document.createElement("code");
+
+  const val=document.createElement("div");
+
+  actions.append(copy,gitlab,github);
+  wrap.append(providerTag,actions,pre,val);
+  pre.appendChild(code);
+  messages.appendChild(wrap);
+
+  copy.onclick=()=>navigator.clipboard.writeText(code.textContent);
+
+  gitlab.onclick=()=>{
+    const blob=new Blob([code.textContent]);
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download=".gitlab-ci.yml";
+    a.click();
+  };
+
+  github.onclick=()=>{
+    const converted=convertToGitHub(code.textContent);
+    const blob=new Blob([converted]);
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="github-actions.yml";
+    a.click();
+  };
+
+  return {code,val};
+}
+
+sendBtn.onclick=async()=>{
+  clearWelcome();
+  const prompt=input.value;
+  const provider=document.getElementById("provider").value;
+
+  const {code,val}=createBlock(provider);
+
+  const res=await fetch("/api/stream",{method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({prompt,provider})
+  });
+
+  const reader=res.body.getReader();
+  const decoder=new TextDecoder();
+
+  let full="";
+
+  while(true){
+    const {done,value}=await reader.read();
+    if(done) break;
+    const chunk=decoder.decode(value);
+    const parts=chunk.split("\n\n");
+    for(let p of parts){
+      if(!p.startsWith("data:")) continue;
+      const json=JSON.parse(p.replace("data: ",""));
+      if(json.chunk){
+        full+=json.chunk;
+        code.textContent=full;
+      }
     }
   }
 
-  sendBtn.onclick = sendMessage;
-  showWelcome();
+  val.textContent = validateYAML(full) ? "✅ YAML válido" : "❌ YAML inválido";
+};
+
+showWelcome();
 
 });

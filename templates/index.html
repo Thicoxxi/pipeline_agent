@@ -1,33 +1,22 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pipeline Generator</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline Generator</title>
 
-  <!-- CSS (Flask static) -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
+<link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
 
-  <!-- Prism (syntax highlight) -->
-  <link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.css" rel="stylesheet" />
-
-  <!-- YAML parser -->
-  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
-
-  <!-- Autocomplete -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/awesomplete/awesomplete.css" />
-  <script src="https://cdn.jsdelivr.net/npm/awesomplete/awesomplete.min.js"></script>
 </head>
-
 <body>
 
 <header>🚀 Pipeline Generator</header>
-
 <main id="messages"></main>
 
 <footer class="input-wrapper">
   <div class="input-area">
-
     <select id="provider">
       <option value="auto">Auto</option>
       <option value="openai">OpenAI</option>
@@ -35,20 +24,13 @@
       <option value="local">Local</option>
     </select>
 
-    <div class="input-box">
-      <textarea id="chatInput" placeholder="Descreva seu pipeline..."></textarea>
-    </div>
-
+    <textarea id="chatInput" placeholder="Descreva seu pipeline..."></textarea>
     <button id="sendBtn">Enviar</button>
-
   </div>
 </footer>
 
-<!-- Prism -->
 <script src="https://cdn.jsdelivr.net/npm/prismjs/prism.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-yaml.min.js"></script>
-
-<!-- JS -->
 <script src="{{ url_for('static', filename='chat.js') }}"></script>
 
 </body>
