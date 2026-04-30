@@ -9,8 +9,12 @@
   <!-- Prism -->
   <link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.css" rel="stylesheet" />
 
-  <!-- YAML VALIDATOR -->
+  <!-- YAML -->
   <script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
+
+  <!-- Autocomplete -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/awesomplete/awesomplete.css" />
+  <script src="https://cdn.jsdelivr.net/npm/awesomplete/awesomplete.min.js"></script>
 </head>
 
 <body>
@@ -19,17 +23,26 @@
 
 <div id="messages"></div>
 
-<div class="input-area">
-  <select id="provider">
-    <option value="auto">Auto</option>
-    <option value="openai">OpenAI</option>
-    <option value="groq">Groq</option>
-    <option value="local">Local</option>
-  </select>
+<!-- INPUT NOVO -->
+<div class="input-wrapper">
+  <div class="input-area">
 
-  <textarea id="chatInput" placeholder="Descreva seu pipeline..."></textarea>
+    <select id="provider">
+      <option value="auto">Auto</option>
+      <option value="openai">OpenAI</option>
+      <option value="groq">Groq</option>
+      <option value="local">Local</option>
+    </select>
 
-  <button id="sendBtn">Enviar 🚀</button>
+    <div class="input-box">
+      <textarea id="chatInput" placeholder="Descreva seu pipeline..."></textarea>
+    </div>
+
+    <div class="send-wrapper">
+      <button id="sendBtn">Enviar 🚀</button>
+    </div>
+
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/prismjs/prism.js"></script>

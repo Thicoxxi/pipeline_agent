@@ -6,17 +6,107 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let welcomeVisible = true;
 
-  // ===== YAML VALIDATOR =====
-  function validateYAML(yamlText) {
+  // ================= AUTO EXPAND MELHORADO =================
+  input.addEventListener("input", () => {
+    input.style.height = "auto";
+
+    const maxHeight = 400; // 🔥 aumentado para combinar com CSS
+    input.style.height = Math.min(input.scrollHeight, maxHeight) + "px";
+  });
+
+  // ENTER ENVIA
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendBtn.click();
+    }
+  });
+
+  // ================= AUTOCOMPLETE =================
+  new Awesomplete(input, {
+    list: [
+      "stages", "build", "test", "deploy",
+      "image", "services", "before_script",
+      "script", "after_script", "rules",
+      "tags", "variables", "cache"
+    ],
+    minChars: 1
+  });
+
+  // ================= YAML VALIDATOR =================
+  function validateYAMLWithLine(yamlText) {
     try {
       jsyaml.load(yamlText);
       return { valid: true };
     } catch (e) {
-      return { valid: false, error: e.message };
+      const match = e.message.match(/at line (\d+)/);
+      return {
+        valid: false,
+        error: e.message,
+        line: match ? parseInt(match[1]) : null
+      };
     }
   }
 
-  // ===== FILA DE DIGITAÇÃO =====
+  function highlightErrorLine(codeEl, lineNumber) {
+    const lines = codeEl.textContent.split("\n");
+
+    const html = lines.map((line, i) => {
+      if (i + 1 === lineNumber) {
+        return `<span class="error-line">${line}</span>`;
+      }
+      return line;
+    }).join("\n");
+
+    codeEl.innerHTML = html;
+    Prism.highlightElement(codeEl);
+  }
+
+  // ================= TEMPLATES =================
+  const TEMPLATES = {
+    java: `stages:
+  - build
+  - test
+
+build:
+  stage: build
+  script:
+    - mvn clean package
+
+test:
+  stage: test
+  script:
+    - mvn test
+`,
+    python: `stages:
+  - test
+
+test:
+  stage: test
+  script:
+    - pip install -r requirements.txt
+    - pytest
+`,
+    docker: `stages:
+  - build
+
+build:
+  stage: build
+  script:
+    - docker build -t app .
+    - docker push app
+`
+  };
+
+  function detectTemplate(prompt) {
+    prompt = prompt.toLowerCase();
+    if (prompt.includes("java")) return TEMPLATES.java;
+    if (prompt.includes("python")) return TEMPLATES.python;
+    if (prompt.includes("docker")) return TEMPLATES.docker;
+    return null;
+  }
+
+  // ================= DIGITAÇÃO OTIMIZADA =================
   class TypeQueue {
     constructor(element) {
       this.el = element;
@@ -34,10 +124,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
       while (this.queue.length > 0) {
         this.el.textContent += this.queue.shift();
-        Prism.highlightElement(this.el);
-        await new Promise(r => setTimeout(r, 5));
+
+        if (this.queue.length % 5 === 0) {
+          Prism.highlightElement(this.el);
+        }
+
+        await new Promise(r => setTimeout(r, 10));
       }
 
+      Prism.highlightElement(this.el);
       this.running = false;
     }
   }
@@ -142,8 +237,27 @@ document.addEventListener("DOMContentLoaded", () => {
     addMessage(prompt, "user");
 
     input.value = "";
+    input.style.height = "100px"; // 🔥 alinhado com CSS
 
     const { typer, spinner, validationDiv, code } = createCodeBlock();
+
+    const template = detectTemplate(prompt);
+    if (provider === "local" && template) {
+      typer.push(template);
+      spinner.remove();
+
+      const result = validateYAMLWithLine(template);
+
+      if (!result.valid && result.line) {
+        highlightErrorLine(code, result.line);
+      }
+
+      validationDiv.innerHTML = result.valid
+        ? "✅ YAML válido"
+        : "❌ " + result.error;
+
+      return;
+    }
 
     const res = await fetch("/api/stream", {
       method: "POST",
@@ -173,14 +287,18 @@ document.addEventListener("DOMContentLoaded", () => {
         if (json.validation) {
           spinner.remove();
 
-          const result = validateYAML(code.textContent);
+          const result = validateYAMLWithLine(code.textContent);
 
           if (result.valid) {
             validationDiv.innerHTML = "✅ YAML válido";
-            validationDiv.classList.add("valid");
+            validationDiv.className = "validation valid";
           } else {
-            validationDiv.innerHTML = "❌ YAML inválido:<br>" + result.error;
-            validationDiv.classList.add("invalid");
+            validationDiv.innerHTML = "❌ " + result.error;
+            validationDiv.className = "validation invalid";
+
+            if (result.line) {
+              highlightErrorLine(code, result.line);
+            }
           }
         }
       }
@@ -188,13 +306,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   sendBtn.onclick = sendMessage;
-
-  input.addEventListener("keydown", e => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  });
 
   showWelcome();
 });

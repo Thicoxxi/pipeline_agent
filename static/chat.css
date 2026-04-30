@@ -13,7 +13,7 @@ header {
 
 #messages {
   padding: 20px;
-  height: calc(100vh - 140px);
+  height: calc(100vh - 180px);
   overflow-y: auto;
 }
 
@@ -52,7 +52,9 @@ header {
   background: #1a2338;
   padding: 14px;
   border-radius: 12px;
-  max-width: 900px;
+  width: 100%;        /* ocupa toda a largura */
+  max-width: none;    /* remove limite */
+  box-sizing: border-box;
 }
 
 .msg.user .bubble {
@@ -65,7 +67,12 @@ pre {
   padding: 14px;
   border-radius: 8px;
   overflow-x: auto;
-  position: relative;
+}
+
+/* error highlight */
+.error-line {
+  background: rgba(255, 0, 0, 0.25);
+  display: block;
 }
 
 /* actions */
@@ -91,29 +98,79 @@ pre {
   font-size: 13px;
 }
 
-.valid {
-  color: #22c55e;
-}
+.valid { color: #22c55e; }
+.invalid { color: #ef4444; }
 
-.invalid {
-  color: #ef4444;
-}
+/* ================= INPUT MELHORADO ================= */
 
-/* input */
-.input-area {
+.input-wrapper {
   position: fixed;
   bottom: 0;
   width: 100%;
+  background: #0b1220;
+  padding: 18px 0;
   display: flex;
-  gap: 10px;
-  background: #111827;
-  padding: 10px;
+  justify-content: center;
 }
 
+.input-area {
+  width: 95%;
+  max-width: 1200px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+/* select */
+select {
+  height: 50px;
+  border-radius: 12px;
+  background: #1f2a44;
+  color: white;
+  border: none;
+  padding: 0 12px;
+}
+
+/* caixa principal */
+.input-box {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  background: #1e293b;
+  border-radius: 18px;
+  padding: 14px;
+}
+
+/* textarea grande */
 textarea {
   flex: 1;
-  padding: 10px;
-  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: white;
+  resize: none;
+  font-size: 16px;
+  outline: none;
+
+  min-height: 100px;
+  max-height: 400px;
+  line-height: 1.5;
+  padding: 6px 0;
+}
+
+/* botão fora da caixa */
+.send-wrapper {
+  display: flex;
+  align-items: flex-end;
+}
+
+.send-wrapper button {
+  background: #2563eb;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 12px;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
 }
 
 /* spinner */
@@ -128,4 +185,19 @@ textarea {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* responsividade */
+@media (max-width: 768px) {
+  .input-area {
+    width: 100%;
+    max-width: 100%;
+    gap: 8px;
+  }
+
+  textarea {
+    font-size: 14px;
+    min-height: 80px;
+    max-height: 300px;
+  }
 }
