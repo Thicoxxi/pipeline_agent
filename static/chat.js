@@ -1,297 +1,200 @@
-const messages = document.getElementById("messages");
-const input = document.getElementById("chatInput");
+document.addEventListener("DOMContentLoaded", () => {
 
-// -----------------------------
-// SUGESTÕES
-// -----------------------------
-const SUGGESTIONS = [
-  "criar pipeline dotnet core 10",
-  "pipeline java com test e build",
-  "pipeline terraform aws",
-  "pipeline python 3.12",
-  "pipeline .net framework 4.8 com nuget",
-  "pipeline docker build e push",
-  "pipeline node com npm install e test"
-];
+  const messages = document.getElementById("messages");
+  const input = document.getElementById("chatInput");
+  const sendBtn = document.getElementById("sendBtn");
 
-// -----------------------------
-// ADD MESSAGE
-// -----------------------------
-function addMessage(html, type="ai") {
-  const div = document.createElement("div");
-  div.className = `msg ${type}`;
-  div.innerHTML = `<div class="bubble">${html}</div>`;
-  messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
-}
+  let welcomeVisible = true;
 
-// -----------------------------
-// TYPE HTML (EFEITO REAL)
-// -----------------------------
-function typeHTML(element, html, speed = 12) {
-  const temp = document.createElement("div");
-  temp.innerHTML = html;
-
-  let queue = [];
-
-  function walk(node) {
-    if (node.nodeType === 3) {
-      queue.push({type: "text", content: node.textContent});
-    } else if (node.nodeType === 1) {
-      queue.push({type: "startTag", tag: node.cloneNode(false)});
-      node.childNodes.forEach(walk);
-      queue.push({type: "endTag"});
+  // ===== YAML VALIDATOR =====
+  function validateYAML(yamlText) {
+    try {
+      jsyaml.load(yamlText);
+      return { valid: true };
+    } catch (e) {
+      return { valid: false, error: e.message };
     }
   }
 
-  temp.childNodes.forEach(walk);
-
-  let currentNode = element;
-  let stack = [];
-  let i = 0;
-
-  function process() {
-    if (i >= queue.length) return;
-
-    const item = queue[i];
-
-    if (item.type === "startTag") {
-      const el = item.tag;
-      currentNode.appendChild(el);
-      stack.push(currentNode);
-      currentNode = el;
-      i++;
-      process();
+  // ===== FILA DE DIGITAÇÃO =====
+  class TypeQueue {
+    constructor(element) {
+      this.el = element;
+      this.queue = [];
+      this.running = false;
     }
-    else if (item.type === "endTag") {
-      currentNode = stack.pop();
-      i++;
-      process();
-    }
-    else if (item.type === "text") {
-      let text = item.content;
-      let j = 0;
 
-      function typeChar() {
-        if (j < text.length) {
-          currentNode.append(text[j]);
-          j++;
-          setTimeout(typeChar, speed);
-        } else {
-          i++;
-          process();
-        }
+    push(text) {
+      this.queue.push(...text.split(""));
+      if (!this.running) this.run();
+    }
+
+    async run() {
+      this.running = true;
+
+      while (this.queue.length > 0) {
+        this.el.textContent += this.queue.shift();
+        Prism.highlightElement(this.el);
+        await new Promise(r => setTimeout(r, 5));
       }
 
-      typeChar();
+      this.running = false;
     }
   }
 
-  process();
-}
+  function removeWelcome() {
+    if (welcomeVisible) {
+      messages.innerHTML = "";
+      welcomeVisible = false;
+    }
+  }
 
-// -----------------------------
-// CURSOR
-// -----------------------------
-function addCursor(element) {
-  const cursor = document.createElement("span");
-  cursor.className = "typing-cursor";
-  cursor.innerText = "|";
-  element.appendChild(cursor);
-  return cursor;
-}
+  function addMessage(text, type="user") {
+    const div = document.createElement("div");
+    div.className = `msg ${type}`;
+    div.innerHTML = `<div class="bubble">${text}</div>`;
+    messages.appendChild(div);
+  }
 
-// -----------------------------
-// WELCOME
-// -----------------------------
-function typeMessage(html) {
-  const div = document.createElement("div");
-  div.className = "msg ai";
+  function showWelcome() {
+    const div = document.createElement("div");
+    div.className = "welcome-box";
 
-  const bubble = document.createElement("div");
-  bubble.className = "bubble welcome";
+    div.innerHTML = `
+      <h2>👋 Olá!</h2>
+      <p>Sou seu <strong>Agent de Pipelines 🤖</strong></p>
+      <p>Transformo ideias em <strong>.gitlab-ci.yml</strong></p>
 
-  div.appendChild(bubble);
-  messages.appendChild(div);
+      <div class="chips">
+        <div class="chip">pipeline java com test e build</div>
+        <div class="chip">pipeline docker build e push</div>
+        <div class="chip">pipeline python 3.12</div>
+      </div>
+    `;
 
-  const cursor = addCursor(bubble);
+    div.querySelectorAll(".chip").forEach(c => {
+      c.onclick = () => input.value = c.innerText;
+    });
 
-  typeHTML(bubble, html, 10);
+    messages.appendChild(div);
+  }
 
-  setTimeout(() => {
-    cursor.remove();
-  }, 4000);
-}
+  function createCodeBlock() {
+    const wrapper = document.createElement("div");
+    wrapper.className = "msg ai";
 
-function showWelcome() {
-  typeMessage(`
-    <h2>👋 Olá!</h2>
-    <p>Sou seu <strong>Agent de Pipelines 🤖</strong></p>
-    <p>Transformo ideias em <strong>.gitlab-ci.yml</strong> ⚡</p>
-    <p style="opacity:0.7">Clique em um exemplo abaixo:</p>
-  `);
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
 
-  renderChips(SUGGESTIONS);
-}
+    const actions = document.createElement("div");
+    actions.className = "actions";
 
-// -----------------------------
-// CHIPS
-// -----------------------------
-function renderChips(list) {
-  const container = document.createElement("div");
-  container.className = "chips";
+    const copyBtn = document.createElement("button");
+    copyBtn.className = "action-btn";
+    copyBtn.innerText = "📋 copiar";
 
-  list.forEach(text => {
-    const chip = document.createElement("div");
-    chip.className = "chip";
-    chip.innerText = text;
+    const downloadBtn = document.createElement("button");
+    downloadBtn.className = "action-btn";
+    downloadBtn.innerText = "⬇️ baixar";
 
-    chip.onclick = () => {
-      input.value = text;
-      input.focus();
+    const spinner = document.createElement("div");
+    spinner.className = "spinner";
+
+    const pre = document.createElement("pre");
+    const code = document.createElement("code");
+
+    const validationDiv = document.createElement("div");
+    validationDiv.className = "validation";
+
+    pre.appendChild(code);
+    actions.appendChild(copyBtn);
+    actions.appendChild(downloadBtn);
+
+    bubble.appendChild(actions);
+    bubble.appendChild(spinner);
+    bubble.appendChild(pre);
+    bubble.appendChild(validationDiv);
+
+    wrapper.appendChild(bubble);
+    messages.appendChild(wrapper);
+
+    const typer = new TypeQueue(code);
+
+    copyBtn.onclick = () => navigator.clipboard.writeText(code.textContent);
+
+    downloadBtn.onclick = () => {
+      const blob = new Blob([code.textContent], {type: "text/yaml"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = ".gitlab-ci.yml";
+      a.click();
     };
 
-    container.appendChild(chip);
-  });
+    return { typer, spinner, validationDiv, code };
+  }
 
-  messages.appendChild(container);
-}
+  async function sendMessage() {
+    const provider = document.getElementById("provider").value;
+    const prompt = input.value.trim();
+    if (!prompt) return;
 
-// -----------------------------
-// CODE BLOCK
-// -----------------------------
-function createCodeBlock() {
-  const wrapper = document.createElement("div");
-  wrapper.className = "msg ai";
+    removeWelcome();
+    addMessage(prompt, "user");
 
-  const bubble = document.createElement("div");
-  bubble.className = "bubble";
+    input.value = "";
 
-  const header = document.createElement("div");
-  header.style.display = "flex";
-  header.style.justifyContent = "space-between";
+    const { typer, spinner, validationDiv, code } = createCodeBlock();
 
-  const providerLabel = document.createElement("span");
-  const validationLabel = document.createElement("span");
+    const res = await fetch("/api/stream", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({prompt, provider})
+    });
 
-  const spinner = document.createElement("div");
-  spinner.className = "spinner";
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
 
-  const copyBtn = document.createElement("button");
-  copyBtn.textContent = "📋";
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
 
-  const downloadBtn = document.createElement("button");
-  downloadBtn.textContent = "⬇️";
+      const chunk = decoder.decode(value);
+      const parts = chunk.split("\n\n");
 
-  const pre = document.createElement("pre");
-  const code = document.createElement("code");
-  code.className = "language-yaml";
+      for (let p of parts) {
+        if (!p.startsWith("data:")) continue;
 
-  copyBtn.onclick = () => {
-    navigator.clipboard.writeText(code.textContent);
-  };
+        const json = JSON.parse(p.replace("data: ", ""));
 
-  downloadBtn.onclick = () => {
-    const blob = new Blob([code.textContent], {type: "text/yaml"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = ".gitlab-ci.yml";
-    a.click();
-  };
-
-  header.appendChild(providerLabel);
-  header.appendChild(validationLabel);
-
-  bubble.appendChild(header);
-  bubble.appendChild(spinner);
-  bubble.appendChild(copyBtn);
-  bubble.appendChild(downloadBtn);
-
-  pre.appendChild(code);
-  bubble.appendChild(pre);
-
-  wrapper.appendChild(bubble);
-  messages.appendChild(wrapper);
-
-  return {code, spinner, providerLabel, validationLabel};
-}
-
-// -----------------------------
-// SEND
-// -----------------------------
-async function sendMessage() {
-  const provider = document.getElementById("provider").value;
-  const prompt = input.value.trim();
-
-  if (!prompt) return;
-
-  addMessage(prompt, "user");
-  input.value = "";
-
-  const {code, spinner, providerLabel, validationLabel} = createCodeBlock();
-
-  const res = await fetch("/api/stream", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({prompt, provider})
-  });
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-
-  let full = "";
-
-  while (true) {
-    const {done, value} = await reader.read();
-    if (done) break;
-
-    const chunk = decoder.decode(value);
-    const parts = chunk.split("\n\n");
-
-    for (let p of parts) {
-      if (!p.startsWith("data:")) continue;
-
-      const json = JSON.parse(p.replace("data: ", ""));
-
-      if (json.error) {
-        spinner.remove();
-        code.textContent = "❌ Erro: " + json.error;
-        return;
-      }
-
-      if (json.chunk) {
-        full += json.chunk;
-        code.textContent = full;
-        Prism.highlightElement(code);
-      }
-
-      if (json.provider) {
-        if (json.provider === "openai") {
-          providerLabel.textContent = "🤖 OpenAI";
-        } else if (json.provider === "groq") {
-          providerLabel.textContent = "⚡ Groq";
-        } else {
-          providerLabel.textContent = "🧠 Local";
+        if (json.chunk) {
+          typer.push(json.chunk);
         }
-      }
 
-      if (json.validation) {
-        validationLabel.textContent = json.validation;
-        spinner.remove();
+        if (json.validation) {
+          spinner.remove();
+
+          const result = validateYAML(code.textContent);
+
+          if (result.valid) {
+            validationDiv.innerHTML = "✅ YAML válido";
+            validationDiv.classList.add("valid");
+          } else {
+            validationDiv.innerHTML = "❌ YAML inválido:<br>" + result.error;
+            validationDiv.classList.add("invalid");
+          }
+        }
       }
     }
   }
-}
 
-// -----------------------------
-document.getElementById("sendBtn").onclick = sendMessage;
+  sendBtn.onclick = sendMessage;
 
-input.addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  showWelcome();
 });
-
-document.addEventListener("DOMContentLoaded", showWelcome);

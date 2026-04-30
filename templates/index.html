@@ -2,42 +2,39 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Pipeline Agent</title>
+  <title>Pipeline Generator</title>
 
   <link rel="stylesheet" href="/static/chat.css">
 
-  <!-- Prism (YAML highlight) -->
-  <link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.css" rel="stylesheet"/>
+  <!-- Prism -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.css" rel="stylesheet" />
+
+  <!-- YAML VALIDATOR -->
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
 </head>
 
 <body>
 
-<div class="main">
+<header>🚀 Pipeline Generator</header>
 
-  <header>🚀 Pipeline Agent</header>
+<div id="messages"></div>
 
-  <div id="messages"></div>
+<div class="input-area">
+  <select id="provider">
+    <option value="auto">Auto</option>
+    <option value="openai">OpenAI</option>
+    <option value="groq">Groq</option>
+    <option value="local">Local</option>
+  </select>
 
-  <!-- INPUT -->
-  <div class="input-area">
-    <select id="provider">
-      <option value="auto">Auto</option>
-      <option value="openai">OpenAI</option>
-      <option value="groq">Groq</option>
-      <option value="local">Local</option>
-    </select>
+  <textarea id="chatInput" placeholder="Descreva seu pipeline..."></textarea>
 
-    <textarea id="chatInput" placeholder="Descreva seu pipeline..."></textarea>
-    <button id="sendBtn">Enviar</button>
-  </div>
-
+  <button id="sendBtn">Enviar 🚀</button>
 </div>
 
-<!-- Prism -->
 <script src="https://cdn.jsdelivr.net/npm/prismjs/prism.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-yaml.min.js"></script>
 
 <script src="/static/chat.js"></script>
-
 </body>
 </html>
