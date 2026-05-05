@@ -1,0 +1,26 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.vscode/
+.idea/
+.DS_Store
+.pytest_cache/
+.coverage
+build/
+dist/
+*.egg-info/
+.mypy_cache/
+
+# OS files
+Thumbs.db
+ehthumbs.db
+
+# JetBrains
+*.iml
+
+# logs
+*.log
+
+# Mac
+.Spotlight-V100
