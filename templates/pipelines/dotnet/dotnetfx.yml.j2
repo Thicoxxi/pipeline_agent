@@ -1,0 +1,75 @@
+stages:
+  - version
+  - build
+
+image: mcr.microsoft.com/dotnet/framework/sdk:4.8
+
+variables:
+  SOLUTION: "{{ params.solution or 'MyApp.sln' }}"
+  NUGET_URL: "{{ params.nuget_url or '' }}"
+
+tags:
+  - windows
+
+before_script:
+  - |
+    echo Iniciando pipeline .NET Framework
+    echo Solution: %SOLUTION%
+
+version:
+  stage: version
+  script:
+    - |
+      echo Gerando versão...
+
+      {% if params.version == "commit" %}
+      set VERSION={{ params.version_base }}.%CI_COMMIT_SHORT_SHA%
+      {% else %}
+      set VERSION={{ params.version_base }}.%CI_PIPELINE_ID%
+      {% endif %}
+
+      echo Versao gerada: %VERSION%
+
+      echo Criando script de versionamento...
+
+      (
+      echo param ^(
+      echo     [string]$version
+      echo ^)
+      echo.
+      echo Write-Host "Updating AssemblyInfo to version $version"
+      echo.
+      echo Get-ChildItem -Recurse -Filter AssemblyInfo.cs ^| ForEach-Object ^{
+      echo     (Get-Content $_.FullName^) ^
+      echo     -replace 'AssemblyVersion\\(\".*\"\\^)', "AssemblyVersion(`\"$version`\"^)" ^
+      echo     -replace 'AssemblyFileVersion\\(\".*\"\\^)', "AssemblyFileVersion(`\"$version`\"^)" ^
+      echo     -replace 'AssemblyInformationalVersion\\(\".*\"\\^)', "AssemblyInformationalVersion(`\"$version`\"^)" ^
+      echo     ^| Set-Content $_.FullName
+      echo ^}
+      ) > update-version.ps1
+
+      powershell -ExecutionPolicy Bypass -File update-version.ps1 -version %VERSION%
+
+      echo Versionamento aplicado com sucesso
+
+build:
+  stage: build
+  script:
+    - |
+      echo Restaurando pacotes NuGet...
+
+      {% if params.nuget_url %}
+      nuget sources Add -Name custom -Source "{{ params.nuget_url }}" || echo Source ja existe
+      {% endif %}
+
+      nuget restore %SOLUTION%
+
+      echo Buildando solution...
+
+      msbuild %SOLUTION% /t:Clean
+      msbuild %SOLUTION% /p:Configuration=Release
+
+  artifacts:
+    paths:
+      - "**/bin/Release/"
+    expire_in: 1 week

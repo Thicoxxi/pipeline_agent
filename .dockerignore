@@ -1,0 +1,24 @@
+# Ambiente virtual (CAUSA DO SEU ERRO)
+.venv
+venv
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Git
+.git
+.gitignore
+
+# Node (se existir frontend)
+node_modules
+
+# VSCode
+.vscode
+
+# Logs
+*.log
+
+# Sistema operacional
+.DS_Store
+Thumbs.db

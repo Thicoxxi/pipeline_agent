@@ -1,0 +1,29 @@
+stages:
+  - build
+  - test
+  - publish
+
+variables:
+  DOTNET_VERSION: "8.0"
+
+build:
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  stage: build
+  script:
+    - dotnet restore
+    - dotnet build -c Release
+
+test:
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  stage: test
+  script:
+    - dotnet test
+
+publish:
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  stage: publish
+  script:
+    - dotnet publish -c Release -o out
+  artifacts:
+    paths:
+      - out/

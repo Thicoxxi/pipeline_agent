@@ -1,0 +1,25 @@
+stages:
+  - test
+  - build
+  - package
+
+image: python:3.12
+
+test:
+  stage: test
+  script:
+    - pip install -r requirements.txt
+    - pytest
+
+build:
+  stage: build
+  script:
+    - python -m build
+
+package:
+  stage: package
+  script:
+    - echo "Packaging app"
+  artifacts:
+    paths:
+      - dist/
