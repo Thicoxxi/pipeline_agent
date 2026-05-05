@@ -5,11 +5,9 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 from flask import Flask, render_template, request, Response
-from dotenv import load_dotenv
 
+from config import Config
 from llm_agent import stream_llm
-
-load_dotenv(override=True)
 
 # -----------------------------
 # LOGS
@@ -20,13 +18,21 @@ os.makedirs(LOG_DIR, exist_ok=True)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+formatter = logging.Formatter(
+    "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
 
-app_handler = RotatingFileHandler(f"{LOG_DIR}/app.log", maxBytes=1_000_000, backupCount=3)
+# log geral
+app_handler = RotatingFileHandler(
+    f"{LOG_DIR}/app.log", maxBytes=1_000_000, backupCount=3
+)
 app_handler.setLevel(logging.INFO)
 app_handler.setFormatter(formatter)
 
-error_handler = RotatingFileHandler(f"{LOG_DIR}/error.log", maxBytes=1_000_000, backupCount=3)
+# log erro
+error_handler = RotatingFileHandler(
+    f"{LOG_DIR}/error.log", maxBytes=1_000_000, backupCount=3
+)
 error_handler.setLevel(logging.ERROR)
 error_handler.setFormatter(formatter)
 
@@ -49,7 +55,9 @@ app = Flask(
     static_folder=os.path.join(BASE_DIR, "..", "static")
 )
 
-
+# -----------------------------
+# HELPERS
+# -----------------------------
 def clean_yaml(text: str) -> str:
     if "```" in text:
         parts = text.split("```")
@@ -66,6 +74,9 @@ def detect_type(yaml_text: str) -> str:
     return "unknown"
 
 
+# -----------------------------
+# ROUTES
+# -----------------------------
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -85,15 +96,22 @@ def stream():
         try:
             for chunk, prov in stream_llm(prompt):
                 full += chunk
-                yield f"data: {json.dumps({'chunk': chunk, 'provider': prov})}\n\n"
+
+                yield f"data: {json.dumps({
+                    'chunk': chunk,
+                    'provider': prov
+                })}\n\n"
 
         except Exception as e:
-            logging.error(f"Erro: {e}")
-            yield f"data: {json.dumps({'error': 'Erro interno'})}\n\n"
+            logger.exception("Erro durante streaming")
+            yield f"data: {json.dumps({
+                'error': 'Erro ao gerar resposta'
+            })}\n\n"
             return
 
         cleaned = clean_yaml(full)
 
+        # validação YAML
         try:
             yaml.safe_load(cleaned)
             validation = "✅ YAML válido"
@@ -113,9 +131,16 @@ def stream():
     return Response(generate(), mimetype="text/event-stream")
 
 
+# -----------------------------
+# START
+# -----------------------------
 if __name__ == "__main__":
-    print("ENV:", {
-        "openai": "OK" if os.getenv("OPENAI_API_KEY") else "NOT SET",
-        "groq": "OK" if os.getenv("GROQ_API_KEY") else "NOT SET"
-    })
+
+    try:
+        Config.validate()
+    except Exception as e:
+        logger.error(str(e))
+
+    logger.info(f"Providers: {Config.summary()}")
+
     app.run(host="0.0.0.0", port=5000, debug=True)

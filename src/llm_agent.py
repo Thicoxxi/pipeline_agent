@@ -1,9 +1,7 @@
 import logging
-from pathlib import Path
+import time
 
-import yaml
 from openai import OpenAI, RateLimitError
-from jinja2 import Environment, FileSystemLoader
 
 from config import Config
 
@@ -52,6 +50,38 @@ QUALIDADE:
 """
 
 # -----------------------------
+# CIRCUIT BREAKER
+# -----------------------------
+PROVIDER_STATE = {
+    "openai": {"failures": 0, "blocked_until": 0},
+    "groq": {"failures": 0, "blocked_until": 0},
+}
+
+FAIL_THRESHOLD = 2
+BLOCK_TIME = 30  # segundos
+
+
+def is_available(provider: str) -> bool:
+    state = PROVIDER_STATE[provider]
+    return time.time() > state["blocked_until"]
+
+
+def mark_failure(provider: str):
+    state = PROVIDER_STATE[provider]
+    state["failures"] += 1
+
+    if state["failures"] >= FAIL_THRESHOLD:
+        state["blocked_until"] = time.time() + BLOCK_TIME
+        logger.warning(f"{provider} bloqueado por {BLOCK_TIME}s")
+
+
+def mark_success(provider: str):
+    state = PROVIDER_STATE[provider]
+    state["failures"] = 0
+    state["blocked_until"] = 0
+
+
+# -----------------------------
 # CLIENTES
 # -----------------------------
 def get_openai_client():
@@ -70,35 +100,55 @@ def get_groq_client():
         base_url="https://api.groq.com/openai/v1"
     )
 
+
 # -----------------------------
-# STREAM
+# STREAM BASE COM RETRY
 # -----------------------------
 def _stream(client, model: str, prompt: str, provider: str):
-    try:
-        stream = client.chat.completions.create(
-            model=model,
-            stream=True,
-            temperature=0.2,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt}
-            ]
-        )
+    if provider != "local" and not is_available(provider):
+        raise RuntimeError("provider_blocked")
 
-        for chunk in stream:
-            delta = chunk.choices[0].delta.content
-            if delta:
-                yield delta, provider
+    retries = 2
 
-    except RateLimitError:
-        logger.warning(f"{provider} sem quota")
-        raise RuntimeError("quota_exceeded")
+    for attempt in range(retries + 1):
+        try:
+            stream = client.chat.completions.create(
+                model=model,
+                stream=True,
+                temperature=0.2,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt}
+                ]
+            )
 
-    except Exception as e:
-        logger.warning(f"{provider} erro: {e}")
-        raise RuntimeError("provider_error")
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content
+                if delta:
+                    yield delta, provider
+
+            mark_success(provider)
+            return
+
+        except RateLimitError:
+            logger.warning(f"{provider} sem quota")
+            mark_failure(provider)
+            raise RuntimeError("quota_exceeded")
+
+        except Exception as e:
+            logger.warning(f"{provider} erro tentativa {attempt+1}: {e}")
+
+            if attempt < retries:
+                time.sleep(0.5 * (attempt + 1))
+                continue
+
+            mark_failure(provider)
+            raise RuntimeError("provider_error")
 
 
+# -----------------------------
+# PROVIDERS
+# -----------------------------
 def stream_openai(prompt: str):
     return _stream(get_openai_client(), "gpt-4o-mini", prompt, "openai")
 
@@ -119,31 +169,57 @@ build:
     for c in fallback:
         yield c, "local"
 
+
 # -----------------------------
-# ORQUESTRADOR
+# ORQUESTRADOR INTELIGENTE
 # -----------------------------
 def stream_llm(prompt: str):
+
     providers = []
 
-    if Config.has_openai():
-        providers.append(stream_openai)
-
+    # prioridade dinâmica (Groq primeiro)
     if Config.has_groq():
-        providers.append(stream_groq)
+        providers.append(("groq", stream_groq))
 
-    providers.append(stream_local)
+    if Config.has_openai():
+        providers.append(("openai", stream_openai))
 
-    for fn in providers:
+    providers.append(("local", stream_local))
+
+    for name, fn in providers:
+
+        if name != "local" and not is_available(name):
+            logger.info(f"{name} pulado (bloqueado)")
+            continue
+
         try:
-            logger.info(f"Tentando: {fn.__name__}")
+            logger.info(f"Tentando: {name}")
+
+            started = False
+
             for chunk, prov in fn(prompt):
+                started = True
                 yield chunk, prov
-            return
+
+            if started:
+                logger.info(f"{name} sucesso")
+                mark_success(name)
+                return
+
         except Exception as e:
-            if "quota" in str(e):
-                logger.info(f"{fn.__name__} sem crédito")
+            msg = str(e)
+
+            if "quota" in msg:
+                logger.info(f"{name} sem crédito")
+            elif "blocked" in msg:
+                logger.info(f"{name} bloqueado")
+            elif "not_configured" in msg:
+                logger.info(f"{name} não configurado")
             else:
-                logger.warning(f"{fn.__name__} falhou")
+                logger.warning(f"{name} falhou: {msg}")
+
+    # fallback garantido
+    logger.info("Fallback local ativado")
 
     for chunk, prov in stream_local(prompt):
         yield chunk, prov
