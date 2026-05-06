@@ -4,27 +4,52 @@ document.addEventListener("DOMContentLoaded", () => {
   const messages = document.getElementById("messages");
   const sendBtn = document.getElementById("sendBtn");
 
+  // ================= YAML VALIDATION =================
+  function validateYAML(text){
+    try {
+      if (typeof YAML !== "undefined") YAML.parse(text);
+      else jsyaml.load(text);
+
+      return { valid: true, message: "✔️ YAML válido" };
+    } catch (e) {
+      const match = e.message.match(/line (\d+)/i);
+      return {
+        valid: false,
+        message: `❌ ${e.message}`,
+        line: match ? parseInt(match[1]) : null
+      };
+    }
+  }
+
+  function highlight(textarea, line){
+    if(!line) return;
+
+    const lines = textarea.value.split("\n");
+    let pos = 0;
+
+    for(let i=0;i<line-1;i++){
+      pos += lines[i].length + 1;
+    }
+
+    textarea.focus();
+    textarea.setSelectionRange(pos, pos + lines[line-1].length);
+  }
+
+  // ================= WELCOME =================
   function showWelcome(){
     const div = document.createElement("div");
     div.className = "welcome-box";
 
     div.innerHTML = `
       <h2>👋 Olá!</h2>
-      <p>Sou seu assistente para criar pipelines 🚀</p>
+      <p>Sou seu assistente para criar pipelines CI/CD 🚀</p>
 
-      <h3>💡 Exemplos rápidos</h3>
       <div class="chips">
         <span class="chip">pipeline gitlab python pytest</span>
-        <span class="chip">pipeline gitlab nodejs build test deploy</span>
-        <span class="chip">pipeline gitlab docker build push registry</span>
-
-        <span class="chip">pipeline github actions node 20 com jest</span>
-        <span class="chip">pipeline github actions java maven build</span>
-        <span class="chip">pipeline github actions deploy aws</span>
-
-        <span class="chip">pipeline terraform aws com validação e apply</span>
-        <span class="chip">pipeline azure devops build .net 9</span>
-        <span class="chip">pipeline ci cd com sonar e docker</span>
+        <span class="chip">pipeline gitlab docker build push</span>
+        <span class="chip">pipeline gitlab nodejs build deploy</span>
+        <span class="chip">pipeline github actions node 20</span>
+        <span class="chip">pipeline github actions java maven</span>
       </div>
     `;
 
@@ -42,13 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelector(".welcome-box")?.remove();
   }
 
-  function getProviderIcon(p){
-    if(p==="openai") return "🧠 OpenAI";
-    if(p==="groq") return "⚡ Groq";
-    if(p==="local") return "💻 Local";
-    return "🤖 Auto";
-  }
-
+  // ================= CONVERT =================
   function convertToGitHub(yaml){
     try{
       const parsed = jsyaml.load(yaml);
@@ -77,109 +96,100 @@ ${jobs}`;
     }
   }
 
-  function convertToGitLab(yaml){
-    try{
-      const parsed = jsyaml.load(yaml);
-      let stages = [];
-      let jobs = "";
+  // ================= BLOCK =================
+  function createBlock(provider){
 
-      for(const jobName in parsed.jobs){
-        const job = parsed.jobs[jobName];
-        stages.push(jobName);
-
-        const steps = job.steps
-          ?.filter(s => s.run)
-          .map(s => "    - " + s.run)
-          .join("\n");
-
-        jobs += `
-${jobName}:
-  stage: ${jobName}
-  script:
-${steps || "    - echo no steps"}
-`;
-      }
-
-      return `stages:
-${stages.map(s=>"  - "+s).join("\n")}
-
-${jobs}`;
-    }catch{
-      return "# erro ao converter";
-    }
-  }
-
-  function createBlock(initialProvider){
     const wrap = document.createElement("div");
 
-    let currentProvider = initialProvider;
-    let gitlabYaml = "";
-    let githubYaml = "";
-
-    const providerTag = document.createElement("div");
-    providerTag.className = "provider-tag";
-    providerTag.textContent = getProviderIcon(currentProvider);
+    const header = document.createElement("div");
+    header.className = "provider-tag";
+    header.textContent = provider.toUpperCase();
 
     const actions = document.createElement("div");
     actions.className = "actions";
 
-    const copyAll = document.createElement("button");
-    copyAll.textContent = "📋 copiar ambos";
+    const updateBtn = document.createElement("button");
+    updateBtn.textContent = "♻️ Atualizar";
 
-    actions.append(copyAll);
+    actions.append(updateBtn);
 
     const container = document.createElement("div");
     container.className = "split-view";
 
+    // LEFT (GitLab)
     const left = document.createElement("div");
+
     const leftHeader = document.createElement("div");
-    leftHeader.innerHTML = `
-      <span>GitLab CI</span>
-      <button class="save-btn">💾 salvar .gitlab-ci.yml</button>
-    `;
-    const leftBtn = leftHeader.querySelector("button");
+    leftHeader.className = "block-header";
 
-    const preLeft = document.createElement("pre");
-    const codeLeft = document.createElement("code");
-    preLeft.appendChild(codeLeft);
-    left.append(leftHeader, preLeft);
+    const saveGitlab = document.createElement("button");
+    saveGitlab.textContent = "💾 GitLab";
 
+    leftHeader.appendChild(saveGitlab);
+
+    const codeLeft = document.createElement("textarea");
+    codeLeft.className = "editor";
+
+    left.append(leftHeader, codeLeft);
+
+    // RIGHT (GitHub)
     const right = document.createElement("div");
-    const rightHeader = document.createElement("div");
-    rightHeader.innerHTML = `
-      <span>GitHub Actions</span>
-      <button class="save-btn">💾 salvar github-actions.yml</button>
-    `;
-    const rightBtn = rightHeader.querySelector("button");
 
-    const preRight = document.createElement("pre");
-    const codeRight = document.createElement("code");
-    preRight.appendChild(codeRight);
-    right.append(rightHeader, preRight);
+    const rightHeader = document.createElement("div");
+    rightHeader.className = "block-header";
+
+    const saveGithub = document.createElement("button");
+    saveGithub.textContent = "💾 GitHub";
+
+    rightHeader.appendChild(saveGithub);
+
+    const codeRight = document.createElement("textarea");
+    codeRight.className = "editor";
+
+    right.append(rightHeader, codeRight);
 
     container.append(left, right);
 
     const val = document.createElement("div");
     val.className = "validation";
 
-    wrap.append(providerTag, actions, container, val);
+    wrap.append(header, actions, container, val);
     messages.appendChild(wrap);
 
-    copyAll.onclick = () => {
-      const combined = `# GitLab\n${gitlabYaml}\n\n# GitHub\n${githubYaml}`;
-      navigator.clipboard.writeText(combined);
+    // EVENTS
+    codeLeft.addEventListener("input", () => {
+      const res = validateYAML(codeLeft.value);
+
+      val.textContent = res.message;
+      val.style.color = res.valid ? "#22c55e" : "#ef4444";
+
+      if(!res.valid) highlight(codeLeft, res.line);
+    });
+
+    updateBtn.onclick = () => {
+      const res = validateYAML(codeLeft.value);
+
+      if(!res.valid){
+        val.textContent = res.message;
+        val.style.color = "#ef4444";
+        highlight(codeLeft, res.line);
+        return;
+      }
+
+      codeRight.value = convertToGitHub(codeLeft.value);
+      val.textContent = "✔️ convertido";
     };
 
-    leftBtn.onclick = () => {
-      const blob = new Blob([gitlabYaml]);
+    saveGitlab.onclick = () => {
+      const blob = new Blob([codeLeft.value]);
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = ".gitlab-ci.yml";
       a.click();
     };
 
-    rightBtn.onclick = () => {
-      const blob = new Blob([githubYaml]);
+    saveGithub.onclick = () => {
+      const blob = new Blob([codeRight.value]);
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = "github-actions.yml";
@@ -187,39 +197,20 @@ ${jobs}`;
     };
 
     return {
-      updateProvider: (p) => {
-        currentProvider = p;
-        providerTag.textContent = getProviderIcon(currentProvider);
-      },
-      setData: (yaml, type, validation) => {
-
-        if(type === "gitlab"){
-          gitlabYaml = yaml;
-          githubYaml = convertToGitHub(yaml);
-        } else if(type === "github"){
-          githubYaml = yaml;
-          gitlabYaml = convertToGitLab(yaml);
-        }
-
-        codeLeft.textContent = gitlabYaml;
-        codeRight.textContent = githubYaml;
-
-        val.textContent = validation;
-        providerTag.textContent = `${getProviderIcon(currentProvider)} • ${type.toUpperCase()}`;
+      setData: (yaml) => {
+        codeLeft.value = yaml;
+        codeRight.value = convertToGitHub(yaml);
       }
     };
   }
 
+  // ================= SEND =================
   sendBtn.onclick = async () => {
+
     clearWelcome();
 
     const prompt = input.value;
-
-    // 🔥 garante provider
-    const providerSelect = document.getElementById("provider");
-    const provider = providerSelect ? providerSelect.value : "auto";
-
-    console.log("📤 Enviando:", { prompt, provider });
+    const provider = document.getElementById("provider").value;
 
     const block = createBlock(provider);
 
@@ -231,8 +222,6 @@ ${jobs}`;
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-
-    let full = "";
 
     while(true){
       const {done,value} = await reader.read();
@@ -246,21 +235,13 @@ ${jobs}`;
 
         const json = JSON.parse(p.replace("data: ",""));
 
-        // 🔥 atualiza provider dinamicamente
-        if(json.provider){
-          block.updateProvider(json.provider);
-        }
-
-        if(json.chunk){
-          full += json.chunk;
-        }
-
         if(json.yaml){
-          block.setData(json.yaml, json.type, json.validation);
+          block.setData(json.yaml);
         }
       }
     }
   };
 
   showWelcome();
-}); 
+
+});

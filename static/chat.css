@@ -5,74 +5,83 @@ body {
   font-family: system-ui;
 }
 
+/* HEADER */
 header {
   background: #1f2a44;
   padding: 15px;
+  font-size: 18px;
 }
 
+/* CHAT AREA */
 #messages {
   padding: 20px;
   height: 70vh;
-  overflow: auto;
+  overflow-y: auto;
 }
 
-textarea {
+/* INPUT AREA */
+.input-wrapper {
+  position: fixed;
+  bottom: 0;
   width: 100%;
-  min-height: 90px;
+  background: #0b1220;
+  padding: 10px;
+}
+
+.input-area {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* SELECT */
+#provider {
+  width: 120px;
+  height: 36px;
+  font-size: 13px;
+  background: #1e293b;
+  color: white;
+  border-radius: 8px;
+  border: none;
+  padding: 4px;
+}
+
+/* TEXTAREA INPUT */
+#chatInput {
+  flex: 1;
+  min-height: 40px;
+  max-height: 80px;
   background: #1e293b;
   color: white;
   border: none;
-  padding: 12px;
+  padding: 10px;
   border-radius: 10px;
 }
 
-button {
-  margin-top: 10px;
+/* BOTÃO ENVIAR */
+#sendBtn {
+  height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
   background: #2563eb;
   border: none;
-  padding: 10px 16px;
   color: white;
   border-radius: 8px;
   cursor: pointer;
-  transition: 0.2s;
 }
 
-button:hover {
+#sendBtn:hover {
   background: #1d4ed8;
 }
 
-pre {
-  background: #0d1117;
-  padding: 15px;
-  border-radius: 10px;
-  overflow: auto;
-  max-height: 400px;
-  font-size: 13px;
-}
-
-.provider-tag {
-  font-size: 12px;
-  opacity: 0.7;
-  margin-bottom: 6px;
-}
-
-.actions {
-  margin-bottom: 10px;
-}
-
-.actions button {
-  margin-right: 8px;
-  background: #1f2a44;
-}
-
-.validation {
-  margin-top: 8px;
-  font-size: 13px;
-}
-
+/* WELCOME */
 .welcome-box {
   text-align: center;
   margin-top: 80px;
+}
+
+.chips {
+  margin-top: 15px;
 }
 
 .chip {
@@ -91,6 +100,17 @@ pre {
   transform: scale(1.05);
 }
 
+/* BLOCK */
+.provider-tag {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-bottom: 6px;
+}
+
+.actions {
+  margin-bottom: 10px;
+}
+
 /* SPLIT VIEW */
 .split-view {
   display: grid;
@@ -100,30 +120,44 @@ pre {
 }
 
 .split-view > div {
-  display: flex;
-  flex-direction: column;
   border: 1px solid #1f2a44;
   border-radius: 10px;
   padding: 8px;
-}
-
-.split-view > div > div:first-child {
-  font-size: 12px;
-  opacity: 0.8;
-  margin-bottom: 6px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
 }
 
-.split-view button {
-  margin: 0;
+/* HEADER DOS BLOCOS */
+.block-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+.block-header button {
   font-size: 11px;
   padding: 4px 10px;
   background: #2563eb;
   border-radius: 6px;
+  border: none;
+  color: white;
+  cursor: pointer;
 }
 
-.split-view button:hover {
-  background: #1d4ed8;
+/* EDITOR */
+.editor {
+  width: 100%;
+  min-height: 300px;
+  background: #0d1117;
+  color: #ddd;
+  font-family: monospace;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+/* VALIDATION */
+.validation {
+  margin-top: 8px;
+  font-size: 13px;
 }
