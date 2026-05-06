@@ -97,16 +97,21 @@ def stream():
             for chunk, prov in stream_llm(prompt):
                 full += chunk
 
-                yield f"data: {json.dumps({
-                    'chunk': chunk,
-                    'provider': prov
-                })}\n\n"
+                payload = {
+                    "chunk": chunk,
+                    "provider": prov
+                }
 
-        except Exception as e:
+                yield f"data: {json.dumps(payload)}\n\n"
+
+        except Exception:
             logger.exception("Erro durante streaming")
-            yield f"data: {json.dumps({
-                'error': 'Erro ao gerar resposta'
-            })}\n\n"
+
+            payload = {
+                "error": "Erro ao gerar resposta"
+            }
+
+            yield f"data: {json.dumps(payload)}\n\n"
             return
 
         cleaned = clean_yaml(full)
