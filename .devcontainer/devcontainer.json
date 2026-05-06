@@ -8,27 +8,39 @@
 
   "workspaceFolder": "/workspace",
 
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+
   "forwardPorts": [5000],
 
-  "postCreateCommand": "python -m pip install --upgrade pip && pip install -r requirements.txt",
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
 
   "remoteEnv": {
     "OPENAI_API_KEY": "${localEnv:OPENAI_API_KEY}",
     "GROQ_API_KEY": "${localEnv:GROQ_API_KEY}"
   },
 
+  "mounts": [
+    "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached"
+  ],
+
+  "remoteUser": "vscode",
+
   "customizations": {
     "vscode": {
       "settings": {
-        "python.defaultInterpreterPath": "/usr/local/bin/python",
-        "python.pythonPath": "/usr/local/bin/python",
-        "python.terminal.activateEnvironment": false
+        "python.defaultInterpreterPath": "/workspace/.venv/bin/python",
+        "python.terminal.activateEnvironment": true,
+        "git.enableSmartCommit": true,
+        "git.autofetch": true
       },
       "extensions": [
         "ms-python.python",
         "ms-python.vscode-python-envs",
         "ms-azuretools.vscode-docker",
-        "esbenp.prettier-vscode"
+        "esbenp.prettier-vscode",
+        "eamodio.gitlens",
+        "github.vscode-pull-request-github"
       ]
     }
   }
