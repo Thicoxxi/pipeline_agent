@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Pipeline Generator</title>
 
 <link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
 
 <script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/yaml@2.3.4/browser/index.min.js"></script>
-
 </head>
+
 <body>
 
 <header>🚀 Pipeline Generator</header>
@@ -22,14 +22,14 @@
 
     <select id="provider">
       <option value="auto">🤖 Auto</option>
-      <option value="openai">🧠 OpenAI</option>
       <option value="groq">⚡ Groq</option>
+      <option value="openai">🧠 OpenAI</option>
       <option value="local">💻 Local</option>
     </select>
 
-    <textarea id="chatInput" placeholder="Descreva seu pipeline..."></textarea>
+    <textarea id="chatInput" placeholder="Ex: pipeline python pytest docker"></textarea>
 
-    <button id="sendBtn">🚀 Enviar</button>
+    <button id="sendBtn">🚀</button>
 
   </div>
 </footer>

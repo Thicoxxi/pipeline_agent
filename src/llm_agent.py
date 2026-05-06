@@ -19,8 +19,6 @@ TEMPLATES_DIR = BASE_DIR.parent / "templates" / "pipelines"
 TEMPLATES = {
     "dotnet8": TEMPLATES_DIR / "dotnet" / "dotnet8.yml.j2",
     "dotnet9": TEMPLATES_DIR / "dotnet" / "dotnet9.yml.j2",
-    "dotnet10": TEMPLATES_DIR / "dotnet" / "dotnet10.yml.j2",
-    "dotnetfx": TEMPLATES_DIR / "dotnet" / "dotnetfx.yml.j2",
     "java": TEMPLATES_DIR / "java" / "java21.yml.j2",
     "python": TEMPLATES_DIR / "python" / "python312.yml.j2",
     "terraform": TEMPLATES_DIR / "terraform" / "terraform.yml.j2",
@@ -32,9 +30,6 @@ env = Environment(
     lstrip_blocks=True
 )
 
-# -----------------------------
-# SYSTEM PROMPT (SEU MODELO)
-# -----------------------------
 SYSTEM_PROMPT = """
 Você é um engenheiro DevOps SRE especialista em CI/CD.
 
@@ -79,44 +74,30 @@ QUALIDADE:
 # -----------------------------
 def detect_stack(prompt: str) -> str:
     p = prompt.lower()
-    if "dotnet 10" in p or "net 10" in p:
-        return "dotnet10"
-    if "dotnet 9" in p or "net 9" in p:
-        return "dotnet9"
-    if "dotnet 8" in p or "net 8" in p:
-        return "dotnet8"
-    if ".net framework" in p:
-        return "dotnetfx"
-    if "java" in p:
-        return "java"
-    if "python" in p:
-        return "python"
-    if "terraform" in p:
-        return "terraform"
+    if "dotnet 8" in p: return "dotnet8"
+    if "dotnet 9" in p: return "dotnet9"
+    if "java" in p: return "java"
+    if "python" in p: return "python"
+    if "terraform" in p: return "terraform"
     return "unknown"
 
 
 def render_template(path: Path) -> str:
     rel = path.relative_to(TEMPLATES_DIR)
-    return env.get_template(str(rel).replace("\\", "/")).render()
+    return env.get_template(str(rel)).render()
+
 
 # -----------------------------
-# LOCAL PROVIDER
+# LOCAL
 # -----------------------------
-def stream_local(prompt: str) -> Generator[Tuple[str, str], None, None]:
+def stream_local(prompt: str):
     stack = detect_stack(prompt)
 
     if stack in TEMPLATES:
         logger.info(f"🧠 Template local: {stack}")
         content = render_template(TEMPLATES[stack])
-
-        for c in content:
-            yield c, "local"
-        return
-
-    logger.info("⚠️ fallback local genérico")
-
-    fallback = """stages:
+    else:
+        content = """stages:
   - build
 
 build:
@@ -125,11 +106,12 @@ build:
     - echo "fallback local"
 """
 
-    for c in fallback:
+    for c in content:
         yield c, "local"
 
+
 # -----------------------------
-# LLM STREAM
+# PROVIDERS
 # -----------------------------
 def stream_provider(client, model, prompt, provider):
     stream = client.chat.completions.create(
@@ -147,9 +129,7 @@ def stream_provider(client, model, prompt, provider):
         if delta:
             yield delta, provider
 
-# -----------------------------
-# CLIENTES
-# -----------------------------
+
 def get_openai():
     return OpenAI(api_key=Config.openai_key())
 
@@ -160,84 +140,58 @@ def get_groq():
         base_url="https://api.groq.com/openai/v1"
     )
 
+
 # -----------------------------
-# LIMPEZA E VALIDAÇÃO
+# VALIDATION
 # -----------------------------
 def clean_llm_output(text: str) -> str:
-    if "```" in text:
-        parts = text.split("```")
-        if len(parts) >= 3:
-            return parts[1].replace("yaml", "").replace("yml", "").strip()
-    return text.strip()
+    return text.replace("```yaml", "").replace("```", "").strip()
 
 
 def is_valid_yaml(text: str) -> bool:
     try:
-        cleaned = clean_llm_output(text)
-        parsed = yaml.safe_load(cleaned)
-        return isinstance(parsed, dict) and len(cleaned) > 20
-    except Exception:
+        yaml.safe_load(text)
+        return True
+    except:
         return False
 
+
 # -----------------------------
-# ORQUESTRADOR
+# MAIN
 # -----------------------------
 def stream_llm(prompt: str, provider: str = "auto"):
 
-    # -----------------------------
+    logger.info(f"📥 provider: {provider}")
+
+    # =========================
     # FORÇADO
-    # -----------------------------
+    # =========================
     if provider == "local":
-        logger.info("🎯 FORÇADO: local")
+        logger.info("🎯 LOCAL")
         yield from stream_local(prompt)
         return
 
     if provider == "groq":
-        logger.info("🎯 FORÇADO: groq")
-        yield from stream_provider(
-            get_groq(),
-            "llama-3.3-70b-versatile",
-            prompt,
-            "groq"
-        )
+        logger.info("🎯 GROQ")
+        yield from stream_provider(get_groq(), "llama-3.3-70b-versatile", prompt, "groq")
         return
 
     if provider == "openai":
-        logger.info("🎯 FORÇADO: openai")
-        yield from stream_provider(
-            get_openai(),
-            "gpt-4o-mini",
-            prompt,
-            "openai"
-        )
+        logger.info("🎯 OPENAI")
+        yield from stream_provider(get_openai(), "gpt-4o-mini", prompt, "openai")
         return
 
-    # -----------------------------
-    # AUTO (LLM PRIMEIRO)
-    # -----------------------------
-    providers = []
-
-    if Config.has_groq():
-        providers.append(("groq", lambda: stream_provider(
-            get_groq(),
-            "llama-3.3-70b-versatile",
-            prompt,
-            "groq"
-        )))
-
-    if Config.has_openai():
-        providers.append(("openai", lambda: stream_provider(
-            get_openai(),
-            "gpt-4o-mini",
-            prompt,
-            "openai"
-        )))
-
-    last_error = None
+    # =========================
+    # AUTO → GROQ > OPENAI > LOCAL
+    # =========================
+    providers = [
+        ("groq", lambda: stream_provider(get_groq(), "llama-3.3-70b-versatile", prompt, "groq")),
+        ("openai", lambda: stream_provider(get_openai(), "gpt-4o-mini", prompt, "openai")),
+    ]
 
     for name, fn in providers:
         try:
-            logger.info(f"🚀 Tentando {name}")
+            logger.info(f"🚀 tentando {name}")
 
             full = ""
             buffer = []
@@ -246,27 +200,17 @@ def stream_llm(prompt: str, provider: str = "auto"):
                 full += chunk
                 buffer.append((chunk, prov))
 
-            cleaned = clean_llm_output(full)
-
-            if not is_valid_yaml(cleaned):
-                raise RuntimeError("YAML inválido")
+            if not is_valid_yaml(clean_llm_output(full)):
+                raise Exception("YAML inválido")
 
             for item in buffer:
                 yield item
 
-            logger.info(f"✅ {name} sucesso")
+            logger.info(f"✅ {name}")
             return
 
-        except RateLimitError:
-            logger.warning(f"{name} sem quota")
-
         except Exception as e:
-            last_error = e
-            logger.warning(f"{name} falhou: {e}")
+            logger.warning(f"❌ {name}: {e}")
 
-    # -----------------------------
-    # FALLBACK LOCAL
-    # -----------------------------
-    logger.warning("⚠️ Todos LLMs falharam → usando LOCAL")
-
+    logger.warning("⚠️ fallback LOCAL")
     yield from stream_local(prompt)
