@@ -1,14 +1,39 @@
 import logging
-import time
+from pathlib import Path
+from typing import Generator, Tuple
 
+import yaml
 from openai import OpenAI, RateLimitError
+from jinja2 import Environment, FileSystemLoader
 
 from config import Config
 
 logger = logging.getLogger(__name__)
 
 # -----------------------------
-# PROMPT PROFISSIONAL
+# TEMPLATES
+# -----------------------------
+BASE_DIR = Path(__file__).resolve().parent
+TEMPLATES_DIR = BASE_DIR.parent / "templates" / "pipelines"
+
+TEMPLATES = {
+    "dotnet8": TEMPLATES_DIR / "dotnet" / "dotnet8.yml.j2",
+    "dotnet9": TEMPLATES_DIR / "dotnet" / "dotnet9.yml.j2",
+    "dotnet10": TEMPLATES_DIR / "dotnet" / "dotnet10.yml.j2",
+    "dotnetfx": TEMPLATES_DIR / "dotnet" / "dotnetfx.yml.j2",
+    "java": TEMPLATES_DIR / "java" / "java21.yml.j2",
+    "python": TEMPLATES_DIR / "python" / "python312.yml.j2",
+    "terraform": TEMPLATES_DIR / "terraform" / "terraform.yml.j2",
+}
+
+env = Environment(
+    loader=FileSystemLoader(str(TEMPLATES_DIR)),
+    trim_blocks=True,
+    lstrip_blocks=True
+)
+
+# -----------------------------
+# SYSTEM PROMPT (SEU MODELO)
 # -----------------------------
 SYSTEM_PROMPT = """
 Você é um engenheiro DevOps SRE especialista em CI/CD.
@@ -47,117 +72,50 @@ GitHub:
 QUALIDADE:
 - YAML válido
 - pronto para produção
-"""
+""".strip()
 
 # -----------------------------
-# CIRCUIT BREAKER
+# STACK DETECTION
 # -----------------------------
-PROVIDER_STATE = {
-    "openai": {"failures": 0, "blocked_until": 0},
-    "groq": {"failures": 0, "blocked_until": 0},
-}
-
-FAIL_THRESHOLD = 2
-BLOCK_TIME = 30  # segundos
-
-
-def is_available(provider: str) -> bool:
-    state = PROVIDER_STATE[provider]
-    return time.time() > state["blocked_until"]
-
-
-def mark_failure(provider: str):
-    state = PROVIDER_STATE[provider]
-    state["failures"] += 1
-
-    if state["failures"] >= FAIL_THRESHOLD:
-        state["blocked_until"] = time.time() + BLOCK_TIME
-        logger.warning(f"{provider} bloqueado por {BLOCK_TIME}s")
+def detect_stack(prompt: str) -> str:
+    p = prompt.lower()
+    if "dotnet 10" in p or "net 10" in p:
+        return "dotnet10"
+    if "dotnet 9" in p or "net 9" in p:
+        return "dotnet9"
+    if "dotnet 8" in p or "net 8" in p:
+        return "dotnet8"
+    if ".net framework" in p:
+        return "dotnetfx"
+    if "java" in p:
+        return "java"
+    if "python" in p:
+        return "python"
+    if "terraform" in p:
+        return "terraform"
+    return "unknown"
 
 
-def mark_success(provider: str):
-    state = PROVIDER_STATE[provider]
-    state["failures"] = 0
-    state["blocked_until"] = 0
-
+def render_template(path: Path) -> str:
+    rel = path.relative_to(TEMPLATES_DIR)
+    return env.get_template(str(rel).replace("\\", "/")).render()
 
 # -----------------------------
-# CLIENTES
+# LOCAL PROVIDER
 # -----------------------------
-def get_openai_client():
-    key = Config.openai_key()
-    if not key:
-        raise RuntimeError("openai_not_configured")
-    return OpenAI(api_key=key)
+def stream_local(prompt: str) -> Generator[Tuple[str, str], None, None]:
+    stack = detect_stack(prompt)
 
+    if stack in TEMPLATES:
+        logger.info(f"🧠 Template local: {stack}")
+        content = render_template(TEMPLATES[stack])
 
-def get_groq_client():
-    key = Config.groq_key()
-    if not key:
-        raise RuntimeError("groq_not_configured")
-    return OpenAI(
-        api_key=key,
-        base_url="https://api.groq.com/openai/v1"
-    )
+        for c in content:
+            yield c, "local"
+        return
 
+    logger.info("⚠️ fallback local genérico")
 
-# -----------------------------
-# STREAM BASE COM RETRY
-# -----------------------------
-def _stream(client, model: str, prompt: str, provider: str):
-    if provider != "local" and not is_available(provider):
-        raise RuntimeError("provider_blocked")
-
-    retries = 2
-
-    for attempt in range(retries + 1):
-        try:
-            stream = client.chat.completions.create(
-                model=model,
-                stream=True,
-                temperature=0.2,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-
-            for chunk in stream:
-                delta = chunk.choices[0].delta.content
-                if delta:
-                    yield delta, provider
-
-            mark_success(provider)
-            return
-
-        except RateLimitError:
-            logger.warning(f"{provider} sem quota")
-            mark_failure(provider)
-            raise RuntimeError("quota_exceeded")
-
-        except Exception as e:
-            logger.warning(f"{provider} erro tentativa {attempt+1}: {e}")
-
-            if attempt < retries:
-                time.sleep(0.5 * (attempt + 1))
-                continue
-
-            mark_failure(provider)
-            raise RuntimeError("provider_error")
-
-
-# -----------------------------
-# PROVIDERS
-# -----------------------------
-def stream_openai(prompt: str):
-    return _stream(get_openai_client(), "gpt-4o-mini", prompt, "openai")
-
-
-def stream_groq(prompt: str):
-    return _stream(get_groq_client(), "llama-3.3-70b-versatile", prompt, "groq")
-
-
-def stream_local(prompt: str):
     fallback = """stages:
   - build
 
@@ -166,60 +124,149 @@ build:
   script:
     - echo "fallback local"
 """
+
     for c in fallback:
         yield c, "local"
 
+# -----------------------------
+# LLM STREAM
+# -----------------------------
+def stream_provider(client, model, prompt, provider):
+    stream = client.chat.completions.create(
+        model=model,
+        stream=True,
+        temperature=0.1,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            yield delta, provider
 
 # -----------------------------
-# ORQUESTRADOR INTELIGENTE
+# CLIENTES
 # -----------------------------
-def stream_llm(prompt: str):
+def get_openai():
+    return OpenAI(api_key=Config.openai_key())
 
+
+def get_groq():
+    return OpenAI(
+        api_key=Config.groq_key(),
+        base_url="https://api.groq.com/openai/v1"
+    )
+
+# -----------------------------
+# LIMPEZA E VALIDAÇÃO
+# -----------------------------
+def clean_llm_output(text: str) -> str:
+    if "```" in text:
+        parts = text.split("```")
+        if len(parts) >= 3:
+            return parts[1].replace("yaml", "").replace("yml", "").strip()
+    return text.strip()
+
+
+def is_valid_yaml(text: str) -> bool:
+    try:
+        cleaned = clean_llm_output(text)
+        parsed = yaml.safe_load(cleaned)
+        return isinstance(parsed, dict) and len(cleaned) > 20
+    except Exception:
+        return False
+
+# -----------------------------
+# ORQUESTRADOR
+# -----------------------------
+def stream_llm(prompt: str, provider: str = "auto"):
+
+    # -----------------------------
+    # FORÇADO
+    # -----------------------------
+    if provider == "local":
+        logger.info("🎯 FORÇADO: local")
+        yield from stream_local(prompt)
+        return
+
+    if provider == "groq":
+        logger.info("🎯 FORÇADO: groq")
+        yield from stream_provider(
+            get_groq(),
+            "llama-3.3-70b-versatile",
+            prompt,
+            "groq"
+        )
+        return
+
+    if provider == "openai":
+        logger.info("🎯 FORÇADO: openai")
+        yield from stream_provider(
+            get_openai(),
+            "gpt-4o-mini",
+            prompt,
+            "openai"
+        )
+        return
+
+    # -----------------------------
+    # AUTO (LLM PRIMEIRO)
+    # -----------------------------
     providers = []
 
-    # prioridade dinâmica (Groq primeiro)
     if Config.has_groq():
-        providers.append(("groq", stream_groq))
+        providers.append(("groq", lambda: stream_provider(
+            get_groq(),
+            "llama-3.3-70b-versatile",
+            prompt,
+            "groq"
+        )))
 
     if Config.has_openai():
-        providers.append(("openai", stream_openai))
+        providers.append(("openai", lambda: stream_provider(
+            get_openai(),
+            "gpt-4o-mini",
+            prompt,
+            "openai"
+        )))
 
-    providers.append(("local", stream_local))
+    last_error = None
 
     for name, fn in providers:
-
-        if name != "local" and not is_available(name):
-            logger.info(f"{name} pulado (bloqueado)")
-            continue
-
         try:
-            logger.info(f"Tentando: {name}")
+            logger.info(f"🚀 Tentando {name}")
 
-            started = False
+            full = ""
+            buffer = []
 
-            for chunk, prov in fn(prompt):
-                started = True
-                yield chunk, prov
+            for chunk, prov in fn():
+                full += chunk
+                buffer.append((chunk, prov))
 
-            if started:
-                logger.info(f"{name} sucesso")
-                mark_success(name)
-                return
+            cleaned = clean_llm_output(full)
+
+            if not is_valid_yaml(cleaned):
+                raise RuntimeError("YAML inválido")
+
+            for item in buffer:
+                yield item
+
+            logger.info(f"✅ {name} sucesso")
+            return
+
+        except RateLimitError:
+            logger.warning(f"{name} sem quota")
 
         except Exception as e:
-            msg = str(e)
+            last_error = e
+            logger.warning(f"{name} falhou: {e}")
 
-            if "quota" in msg:
-                logger.info(f"{name} sem crédito")
-            elif "blocked" in msg:
-                logger.info(f"{name} bloqueado")
-            elif "not_configured" in msg:
-                logger.info(f"{name} não configurado")
-            else:
-                logger.warning(f"{name} falhou: {msg}")
+    # -----------------------------
+    # FALLBACK LOCAL
+    # -----------------------------
+    logger.warning("⚠️ Todos LLMs falharam → usando LOCAL")
 
-    # fallback garantido
-    logger.info("Fallback local ativado")
-
-    for chunk, prov in stream_local(prompt):
-        yield chunk, prov
+    yield from stream_local(prompt)

@@ -109,16 +109,16 @@ ${jobs}`;
     }
   }
 
-  function createBlock(provider){
+  function createBlock(initialProvider){
     const wrap = document.createElement("div");
 
-    let pipelineType = "unknown";
+    let currentProvider = initialProvider;
     let gitlabYaml = "";
     let githubYaml = "";
 
     const providerTag = document.createElement("div");
     providerTag.className = "provider-tag";
-    providerTag.textContent = getProviderIcon(provider);
+    providerTag.textContent = getProviderIcon(currentProvider);
 
     const actions = document.createElement("div");
     actions.className = "actions";
@@ -131,7 +131,6 @@ ${jobs}`;
     const container = document.createElement("div");
     container.className = "split-view";
 
-    // GITLAB
     const left = document.createElement("div");
     const leftHeader = document.createElement("div");
     leftHeader.innerHTML = `
@@ -145,7 +144,6 @@ ${jobs}`;
     preLeft.appendChild(codeLeft);
     left.append(leftHeader, preLeft);
 
-    // GITHUB
     const right = document.createElement("div");
     const rightHeader = document.createElement("div");
     rightHeader.innerHTML = `
@@ -167,7 +165,6 @@ ${jobs}`;
     wrap.append(providerTag, actions, container, val);
     messages.appendChild(wrap);
 
-    // ações
     copyAll.onclick = () => {
       const combined = `# GitLab\n${gitlabYaml}\n\n# GitHub\n${githubYaml}`;
       navigator.clipboard.writeText(combined);
@@ -190,8 +187,11 @@ ${jobs}`;
     };
 
     return {
+      updateProvider: (p) => {
+        currentProvider = p;
+        providerTag.textContent = getProviderIcon(currentProvider);
+      },
       setData: (yaml, type, validation) => {
-        pipelineType = type;
 
         if(type === "gitlab"){
           gitlabYaml = yaml;
@@ -205,7 +205,7 @@ ${jobs}`;
         codeRight.textContent = githubYaml;
 
         val.textContent = validation;
-        providerTag.textContent = `${getProviderIcon(provider)} • ${type.toUpperCase()}`;
+        providerTag.textContent = `${getProviderIcon(currentProvider)} • ${type.toUpperCase()}`;
       }
     };
   }
@@ -214,14 +214,19 @@ ${jobs}`;
     clearWelcome();
 
     const prompt = input.value;
-    const provider = document.getElementById("provider").value;
+
+    // 🔥 garante provider
+    const providerSelect = document.getElementById("provider");
+    const provider = providerSelect ? providerSelect.value : "auto";
+
+    console.log("📤 Enviando:", { prompt, provider });
 
     const block = createBlock(provider);
 
     const res = await fetch("/api/stream", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({prompt, provider})
+      body: JSON.stringify({ prompt, provider })
     });
 
     const reader = res.body.getReader();
@@ -240,6 +245,11 @@ ${jobs}`;
         if(!p.startsWith("data:")) continue;
 
         const json = JSON.parse(p.replace("data: ",""));
+
+        // 🔥 atualiza provider dinamicamente
+        if(json.provider){
+          block.updateProvider(json.provider);
+        }
 
         if(json.chunk){
           full += json.chunk;

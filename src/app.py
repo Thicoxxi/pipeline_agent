@@ -22,27 +22,15 @@ formatter = logging.Formatter(
     "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 
-# log geral
-app_handler = RotatingFileHandler(
-    f"{LOG_DIR}/app.log", maxBytes=1_000_000, backupCount=3
-)
-app_handler.setLevel(logging.INFO)
+app_handler = RotatingFileHandler(f"{LOG_DIR}/app.log", maxBytes=1_000_000, backupCount=3)
 app_handler.setFormatter(formatter)
 
-# log erro
-error_handler = RotatingFileHandler(
-    f"{LOG_DIR}/error.log", maxBytes=1_000_000, backupCount=3
-)
+error_handler = RotatingFileHandler(f"{LOG_DIR}/error.log", maxBytes=1_000_000, backupCount=3)
 error_handler.setLevel(logging.ERROR)
 error_handler.setFormatter(formatter)
 
 logger.addHandler(app_handler)
 logger.addHandler(error_handler)
-
-# silenciar libs externas
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("httpcore").setLevel(logging.WARNING)
-logging.getLogger("openai").setLevel(logging.WARNING)
 
 # -----------------------------
 # APP
@@ -66,6 +54,19 @@ def clean_yaml(text: str) -> str:
     return text.strip()
 
 
+def validate_yaml(yaml_text: str):
+    try:
+        parsed = yaml.safe_load(yaml_text)
+
+        if not isinstance(parsed, dict):
+            return False, "YAML não é um objeto válido"
+
+        return True, "✅ YAML válido"
+
+    except yaml.YAMLError as e:
+        return False, f"❌ YAML inválido: {str(e)}"
+
+
 def detect_type(yaml_text: str) -> str:
     if "jobs:" in yaml_text and "runs-on" in yaml_text:
         return "github"
@@ -85,17 +86,29 @@ def home():
 @app.route("/api/stream", methods=["POST"])
 def stream():
     data = request.get_json(force=True)
+
     prompt = data.get("prompt", "").strip()
+    provider = data.get("provider", "auto")  # 🔥 AQUI ESTÁ A CORREÇÃO
+
+    logger.info(f"📥 Prompt recebido | provider={provider}")
 
     if not prompt:
         return {"error": "Prompt vazio"}, 400
 
     def generate():
         full = ""
+        last_provider = None
 
         try:
-            for chunk, prov in stream_llm(prompt):
+            # 🔥 PASSANDO provider
+            for chunk, prov in stream_llm(prompt, provider):
+
                 full += chunk
+
+                # detecta troca de provider
+                if prov != last_provider:
+                    logger.info(f"🔁 Mudou provider → {prov}")
+                    last_provider = prov
 
                 payload = {
                     "chunk": chunk,
@@ -105,30 +118,22 @@ def stream():
                 yield f"data: {json.dumps(payload)}\n\n"
 
         except Exception:
-            logger.exception("Erro durante streaming")
+            logger.exception("Erro crítico no streaming")
 
-            payload = {
-                "error": "Erro ao gerar resposta"
-            }
-
-            yield f"data: {json.dumps(payload)}\n\n"
+            yield f"data: {json.dumps({'error': 'Erro inesperado'})}\n\n"
             return
 
+        # pós-processamento
         cleaned = clean_yaml(full)
 
-        # validação YAML
-        try:
-            yaml.safe_load(cleaned)
-            validation = "✅ YAML válido"
-        except Exception as e:
-            validation = f"❌ YAML inválido: {str(e)}"
-
+        valid, validation_msg = validate_yaml(cleaned)
         pipeline_type = detect_type(cleaned)
 
         payload = {
-            "validation": validation,
-            "yaml": cleaned,
-            "type": pipeline_type
+            "validation": validation_msg,
+            "valid": valid,
+            "type": pipeline_type,
+            "yaml": cleaned
         }
 
         yield f"data: {json.dumps(payload)}\n\n"
@@ -140,7 +145,6 @@ def stream():
 # START
 # -----------------------------
 if __name__ == "__main__":
-
     try:
         Config.validate()
     except Exception as e:
