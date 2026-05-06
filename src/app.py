@@ -90,7 +90,7 @@ def stream():
     prompt = data.get("prompt", "").strip()
     provider = data.get("provider", "auto")  # 🔥 AQUI ESTÁ A CORREÇÃO
 
-    logger.info(f"📥 Prompt recebido | provider={provider}")
+    logger.info(f" Prompt recebido | provider={provider}")
 
     if not prompt:
         return {"error": "Prompt vazio"}, 400
@@ -100,14 +100,13 @@ def stream():
         last_provider = None
 
         try:
-            # 🔥 PASSANDO provider
+            # Passando provider
             for chunk, prov in stream_llm(prompt, provider):
-
                 full += chunk
 
-                # detecta troca de provider
+                # Detecta troca de provider
                 if prov != last_provider:
-                    logger.info(f"🔁 Mudou provider → {prov}")
+                    logger.info(f" Mudou provider → {prov}")
                     last_provider = prov
 
                 payload = {
@@ -117,13 +116,13 @@ def stream():
 
                 yield f"data: {json.dumps(payload)}\n\n"
 
-        except Exception:
-            logger.exception("Erro crítico no streaming")
+        except Exception as e:
+            logger.exception(f"Erro crítico no streaming: {str(e)}")
 
             yield f"data: {json.dumps({'error': 'Erro inesperado'})}\n\n"
             return
 
-        # pós-processamento
+        # Pós-processamento
         cleaned = clean_yaml(full)
 
         valid, validation_msg = validate_yaml(cleaned)
