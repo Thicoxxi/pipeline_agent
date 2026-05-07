@@ -15,6 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     div.innerHTML = `
       <h1>🚀 Pipeline Generator AI</h1>
+
       <p>
         Gere pipelines GitLab CI e GitHub Actions automaticamente
       </p>
@@ -59,14 +60,18 @@ document.addEventListener("DOMContentLoaded", () => {
     messages.appendChild(div);
 
     div.querySelectorAll(".chip").forEach(chip => {
+
       chip.onclick = () => {
+
         input.value = chip.textContent.trim();
+
         sendBtn.click();
       };
     });
   }
 
   function clearWelcome(){
+
     document.querySelector(".welcome-box")?.remove();
   }
 
@@ -76,6 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function addUserMessage(text){
 
     const msg = document.createElement("div");
+
     msg.className = "message user";
 
     msg.innerHTML = `
@@ -99,6 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function validateYAML(yamlText){
 
     try{
+
       jsyaml.load(yamlText);
 
       return {
@@ -123,7 +130,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =========================================
-  // HIGHLIGHT ERROR LINE
+  // HIGHLIGHT ERROR
   // =========================================
   function highlightError(textarea, line){
 
@@ -132,12 +139,14 @@ document.addEventListener("DOMContentLoaded", () => {
     let start = 0;
 
     for(let i=0;i<line-1;i++){
+
       start += lines[i].length + 1;
     }
 
     const end = start + (lines[line-1]?.length || 0);
 
     textarea.focus();
+
     textarea.setSelectionRange(start, end);
   }
 
@@ -164,7 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
       - uses: actions/checkout@v4
 
       - run: |
-${parsed[key].script.map(s=>"          "+s).join("\n")}
+${parsed[key].script.map(s => "          " + s).join("\n")}
 `;
         }
       }
@@ -178,6 +187,7 @@ jobs:
 ${jobs}`;
 
     }catch{
+
       return "# erro ao converter";
     }
   }
@@ -188,53 +198,87 @@ ${jobs}`;
   function createBlock(){
 
     const wrap = document.createElement("div");
+
     wrap.className = "message assistant";
 
     // HEADER
     const header = document.createElement("div");
+
     header.className = "assistant-header";
 
     const providerBadge = document.createElement("div");
+
     providerBadge.className = "provider-badge";
+
     providerBadge.innerHTML = `🤖 ${providerSelect.value}`;
 
     const updateBtn = document.createElement("button");
+
     updateBtn.className = "update-btn";
+
     updateBtn.innerHTML = "♻️ Atualizar Pipeline";
 
     header.append(providerBadge, updateBtn);
 
     // SPLIT
     const split = document.createElement("div");
+
     split.className = "split-view";
 
-    // LEFT
+    // =========================================
+    // LEFT PANEL
+    // =========================================
     const left = document.createElement("div");
+
     left.className = "panel";
 
     const leftTop = document.createElement("div");
+
     leftTop.className = "panel-top";
 
     leftTop.innerHTML = `
       <span>🦊 GitLab CI</span>
     `;
 
+    const gitlabButtons = document.createElement("div");
+
+    gitlabButtons.style.display = "flex";
+    gitlabButtons.style.gap = "10px";
+    gitlabButtons.style.flexWrap = "wrap";
+
+    // SAVE GITLAB
     const saveGitlab = document.createElement("button");
+
     saveGitlab.className = "save-btn";
+
     saveGitlab.innerHTML = "💾 salvar .gitlab-ci.yml";
 
-    leftTop.appendChild(saveGitlab);
+    // APPLY GITLAB
+    const applyBtn = document.createElement("button");
+
+    applyBtn.className = "save-btn";
+
+    applyBtn.innerHTML = "🦊 Aplicar no GitLab";
+
+    gitlabButtons.append(saveGitlab, applyBtn);
+
+    leftTop.appendChild(gitlabButtons);
 
     const gitlabEditor = document.createElement("textarea");
+
     gitlabEditor.className = "editor";
 
     left.append(leftTop, gitlabEditor);
 
-    // RIGHT
+    // =========================================
+    // RIGHT PANEL
+    // =========================================
     const right = document.createElement("div");
+
     right.className = "panel";
 
     const rightTop = document.createElement("div");
+
     rightTop.className = "panel-top";
 
     rightTop.innerHTML = `
@@ -242,23 +286,66 @@ ${jobs}`;
     `;
 
     const saveGithub = document.createElement("button");
+
     saveGithub.className = "save-btn";
+
     saveGithub.innerHTML = "💾 salvar github-actions.yml";
 
     rightTop.appendChild(saveGithub);
 
     const githubEditor = document.createElement("textarea");
+
     githubEditor.className = "editor";
 
     right.append(rightTop, githubEditor);
 
     split.append(left, right);
 
+    // =========================================
+    // GITLAB INLINE FORM
+    // =========================================
+    const gitlabForm = document.createElement("div");
+
+    gitlabForm.className = "gitlab-form";
+
+    gitlabForm.innerHTML = `
+      <div class="gitlab-form-grid">
+
+        <input
+          type="text"
+          class="gitlab-input"
+          placeholder="🆔 Informe o GitLab Project ID"
+        >
+
+        <input
+          type="text"
+          class="gitlab-input"
+          placeholder="🌿 Branch"
+          value="main"
+        >
+
+      </div>
+    `;
+
+    const projectIdInput =
+      gitlabForm.querySelectorAll(".gitlab-input")[0];
+
+    const branchInput =
+      gitlabForm.querySelectorAll(".gitlab-input")[1];
+
+    // =========================================
     // VALIDATION
+    // =========================================
     const validation = document.createElement("div");
+
     validation.className = "validation";
 
-    wrap.append(header, split, validation);
+    wrap.append(
+      header,
+      split,
+      gitlabForm,
+      validation
+    );
 
     messages.appendChild(wrap);
 
@@ -268,30 +355,142 @@ ${jobs}`;
     updateBtn.onclick = () => {
 
       updateBtn.disabled = true;
+
       updateBtn.innerHTML = "⏳ validando...";
 
-      const result = validateYAML(gitlabEditor.value);
+      const result = validateYAML(
+        gitlabEditor.value
+      );
 
       if(!result.valid){
 
         validation.innerHTML = result.message;
-        validation.className = "validation error";
 
-        highlightError(gitlabEditor, result.line);
+        validation.className =
+          "validation error";
+
+        highlightError(
+          gitlabEditor,
+          result.line
+        );
 
         updateBtn.disabled = false;
-        updateBtn.innerHTML = "♻️ Atualizar Pipeline";
+
+        updateBtn.innerHTML =
+          "♻️ Atualizar Pipeline";
 
         return;
       }
 
-      githubEditor.value = convertToGitHub(gitlabEditor.value);
+      githubEditor.value =
+        convertToGitHub(gitlabEditor.value);
 
-      validation.innerHTML = "✅ Pipeline atualizado com sucesso";
-      validation.className = "validation success";
+      validation.innerHTML =
+        "✅ Pipeline atualizado com sucesso";
+
+      validation.className =
+        "validation success";
 
       updateBtn.disabled = false;
-      updateBtn.innerHTML = "♻️ Atualizar Pipeline";
+
+      updateBtn.innerHTML =
+        "♻️ Atualizar Pipeline";
+    };
+
+    // =========================================
+    // APPLY GITLAB
+    // =========================================
+    applyBtn.onclick = async () => {
+
+      const projectId =
+        projectIdInput.value.trim();
+
+      const branch =
+        branchInput.value.trim() || "main";
+
+      if(!projectId){
+
+        validation.innerHTML =
+          "❌ Informe o GitLab Project ID";
+
+        validation.className =
+          "validation error";
+
+        projectIdInput.focus();
+
+        return;
+      }
+
+      applyBtn.disabled = true;
+
+      applyBtn.innerHTML =
+        "⏳ Aplicando...";
+
+      validation.innerHTML =
+        "🚀 Publicando pipeline no GitLab...";
+
+      validation.className =
+        "validation success";
+
+      try{
+
+        const res = await fetch(
+          "/api/gitlab/apply",
+          {
+            method:"POST",
+
+            headers:{
+              "Content-Type":"application/json"
+            },
+
+            body: JSON.stringify({
+              project_id: projectId,
+              branch,
+              yaml: gitlabEditor.value
+            })
+          }
+        );
+
+        const data = await res.json();
+
+        if(res.ok){
+
+          validation.innerHTML = `
+✅ Pipeline aplicado no GitLab
+
+📁 Projeto: ${projectId}
+🌿 Branch: ${branch}
+`;
+
+          validation.className =
+            "validation success";
+
+        }else{
+
+          validation.innerHTML =
+            `❌ ${data.error || 'Erro GitLab'}`;
+
+          validation.className =
+            "validation error";
+        }
+
+      }catch(err){
+
+        console.error(err);
+
+        validation.innerHTML =
+          "❌ Falha na integração GitLab";
+
+        validation.className =
+          "validation error";
+
+      }finally{
+
+        applyBtn.disabled = false;
+
+        applyBtn.innerHTML =
+          "🦊 Aplicar no GitLab";
+      }
     };
 
     // =========================================
@@ -299,12 +498,17 @@ ${jobs}`;
     // =========================================
     saveGitlab.onclick = () => {
 
-      const blob = new Blob([gitlabEditor.value]);
+      const blob =
+        new Blob([gitlabEditor.value]);
 
-      const a = document.createElement("a");
+      const a =
+        document.createElement("a");
 
-      a.href = URL.createObjectURL(blob);
-      a.download = ".gitlab-ci.yml";
+      a.href =
+        URL.createObjectURL(blob);
+
+      a.download =
+        ".gitlab-ci.yml";
 
       a.click();
     };
@@ -314,12 +518,17 @@ ${jobs}`;
     // =========================================
     saveGithub.onclick = () => {
 
-      const blob = new Blob([githubEditor.value]);
+      const blob =
+        new Blob([githubEditor.value]);
 
-      const a = document.createElement("a");
+      const a =
+        document.createElement("a");
 
-      a.href = URL.createObjectURL(blob);
-      a.download = "github-actions.yml";
+      a.href =
+        URL.createObjectURL(blob);
+
+      a.download =
+        "github-actions.yml";
 
       a.click();
     };
@@ -327,26 +536,36 @@ ${jobs}`;
     return {
 
       setProvider:(provider)=>{
-        providerBadge.innerHTML = `🤖 ${provider}`;
+
+        providerBadge.innerHTML =
+          `🤖 ${provider}`;
       },
 
       setData:(yaml)=>{
 
         gitlabEditor.value = yaml;
 
-        githubEditor.value = convertToGitHub(yaml);
+        githubEditor.value =
+          convertToGitHub(yaml);
 
-        const result = validateYAML(yaml);
+        const result =
+          validateYAML(yaml);
 
         if(result.valid){
 
-          validation.innerHTML = "✅ YAML válido";
-          validation.className = "validation success";
+          validation.innerHTML =
+            "✅ YAML válido";
+
+          validation.className =
+            "validation success";
 
         }else{
 
-          validation.innerHTML = result.message;
-          validation.className = "validation error";
+          validation.innerHTML =
+            result.message;
+
+          validation.className =
+            "validation error";
         }
       }
     };
@@ -359,18 +578,22 @@ ${jobs}`;
 
     clearWelcome();
 
-    const prompt = input.value.trim();
+    const userPrompt =
+      input.value.trim();
 
-    if(!prompt) return;
+    if(!userPrompt) return;
 
-    const provider = providerSelect.value;
+    const provider =
+      providerSelect.value;
 
-    addUserMessage(prompt);
+    addUserMessage(userPrompt);
 
     input.value = "";
 
     sendBtn.disabled = true;
-    sendBtn.innerHTML = "⏳ Gerando Pipeline...";
+
+    sendBtn.innerHTML =
+      "⏳ Gerando Pipeline...";
 
     const block = createBlock();
 
@@ -378,48 +601,62 @@ ${jobs}`;
 
     try{
 
-      const res = await fetch("/api/stream", {
+      const res = await fetch(
+        "/api/stream",
+        {
+          method: "POST",
 
-        method: "POST",
+          headers:{
+            "Content-Type":"application/json"
+          },
 
-        headers:{
-          "Content-Type":"application/json"
-        },
+          body: JSON.stringify({
+            prompt: userPrompt,
+            provider
+          })
+        }
+      );
 
-        body: JSON.stringify({
-          prompt,
-          provider
-        })
-      });
+      const reader =
+        res.body.getReader();
 
-      const reader = res.body.getReader();
-
-      const decoder = new TextDecoder();
+      const decoder =
+        new TextDecoder();
 
       while(true){
 
-        const {done,value} = await reader.read();
+        const {done,value} =
+          await reader.read();
 
         if(done) break;
 
-        const chunk = decoder.decode(value);
+        const chunk =
+          decoder.decode(value);
 
-        const parts = chunk.split("\n\n");
+        const parts =
+          chunk.split("\n\n");
 
         for(let p of parts){
 
-          if(!p.startsWith("data:")) continue;
+          if(!p.startsWith("data:"))
+            continue;
 
           const json = JSON.parse(
             p.replace("data: ","")
           );
 
           if(json.provider){
-            block.setProvider(json.provider);
+
+            block.setProvider(
+              json.provider
+            );
           }
 
           if(json.yaml){
-            block.setData(json.yaml);
+
+            block.setData(
+              json.yaml
+            );
           }
         }
       }
@@ -431,7 +668,9 @@ ${jobs}`;
     }finally{
 
       sendBtn.disabled = false;
-      sendBtn.innerHTML = "🚀 Gerar Pipeline";
+
+      sendBtn.innerHTML =
+        "🚀 Gerar Pipeline";
     }
   };
 
@@ -440,7 +679,10 @@ ${jobs}`;
   // =========================================
   input.addEventListener("keydown",(e)=>{
 
-    if(e.key === "Enter" && !e.shiftKey){
+    if(
+      e.key === "Enter" &&
+      !e.shiftKey
+    ){
 
       e.preventDefault();
 

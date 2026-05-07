@@ -59,6 +59,21 @@ class Config:
             )
 
     @staticmethod
+    def gitlab_token():
+        return get_env("GITLAB_TOKEN")
+
+    @staticmethod
+    def gitlab_url():
+        return get_env(
+            "GITLAB_URL",
+            "https://gitlab.com/api/v4"
+        )
+
+    @staticmethod
+    def has_gitlab():
+        return Config.gitlab_token() is not None
+
+    @staticmethod
     def summary():
         """
         Retorna status seguro (sem expor secrets)
@@ -66,4 +81,5 @@ class Config:
         return {
             "openai": "OK" if Config.has_openai() else "MISSING",
             "groq": "OK" if Config.has_groq() else "MISSING",
+            "gitlab": "OK" if Config.has_gitlab() else "MISSING",
         }
