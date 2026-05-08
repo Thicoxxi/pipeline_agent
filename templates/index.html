@@ -19,48 +19,73 @@
 
 <body>
 
-<header>
-  🚀 Pipeline Generator AI
-</header>
+<div class="app-container">
 
-<main id="messages"></main>
+  <!-- ===================================== -->
+  <!-- TOPBAR -->
+  <!-- ===================================== -->
+  <header class="topbar">
 
-<footer class="input-wrapper">
+    <div class="logo">
+      🚀 Pipeline Generator AI
+    </div>
 
-  <div class="input-area">
+    <div class="top-actions">
 
-    <select id="provider">
+      <label>
+        Provider
+      </label>
 
-      <option value="auto">
-        🤖 Auto
-      </option>
+      <select id="provider">
 
-      <option value="groq">
-        ⚡ Groq
-      </option>
+        <option value="auto">
+          🤖 Auto
+        </option>
 
-      <option value="openai">
-        🧠 OpenAI
-      </option>
+        <option value="groq">
+          ⚡ Groq
+        </option>
 
-      <option value="local">
-        💻 Local
-      </option>
+        <option value="openai">
+          🧠 OpenAI
+        </option>
 
-    </select>
+        <option value="local">
+          💻 Local
+        </option>
 
-    <textarea
-      id="chatInput"
-      placeholder="Descreva o pipeline desejado..."
-    ></textarea>
+      </select>
 
-    <button id="sendBtn">
-      🚀 Gerar Pipeline
-    </button>
+    </div>
 
-  </div>
+  </header>
 
-</footer>
+  <!-- ===================================== -->
+  <!-- MESSAGES -->
+  <!-- ===================================== -->
+  <main id="messages"></main>
+
+  <!-- ===================================== -->
+  <!-- INPUT -->
+  <!-- ===================================== -->
+  <footer class="input-wrapper">
+
+    <div class="input-area">
+
+      <textarea
+        id="chatInput"
+        placeholder="Descreva o pipeline desejado..."
+      ></textarea>
+
+      <button id="sendBtn">
+        🚀 Gerar Pipeline
+      </button>
+
+    </div>
+
+  </footer>
+
+</div>
 
 <script src="{{ url_for('static', filename='chat.js') }}"></script>
 

@@ -74,6 +74,23 @@ class Config:
         return Config.gitlab_token() is not None
 
     @staticmethod
+    def github_token():
+        return get_env("GITHUB_TOKEN")
+
+
+    @staticmethod
+    def github_url():
+        return get_env(
+            "GITHUB_API_URL",
+            "https://api.github.com"
+    )
+
+
+    @staticmethod
+    def has_github():
+        return Config.github_token() is not None    
+
+    @staticmethod
     def summary():
         """
         Retorna status seguro (sem expor secrets)
@@ -82,4 +99,5 @@ class Config:
             "openai": "OK" if Config.has_openai() else "MISSING",
             "groq": "OK" if Config.has_groq() else "MISSING",
             "gitlab": "OK" if Config.has_gitlab() else "MISSING",
+            "github": "OK" if Config.has_github() else "MISSING",
         }

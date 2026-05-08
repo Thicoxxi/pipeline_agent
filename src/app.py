@@ -16,6 +16,11 @@ from config import Config
 from llm_agent import stream_llm
 from gitlab_client import create_or_update_pipeline
 
+# NOVO
+from github_client import (
+    create_or_update_workflow
+)
+
 # =========================================================
 # LOGS
 # =========================================================
@@ -451,6 +456,178 @@ def apply_gitlab_pipeline():
 
         logger.exception(
             "[GITLAB EXCEPTION]"
+        )
+
+        return {
+
+            "success": False,
+
+            "error": str(e)
+
+        }, 500
+
+
+# =========================================================
+# APPLY GITHUB
+# =========================================================
+@app.route(
+    "/api/github/apply",
+    methods=["POST"]
+)
+def apply_github_pipeline():
+
+    data = request.get_json(
+        force=True
+    )
+
+    owner = data.get(
+        "owner"
+    )
+
+    repo = data.get(
+        "repo"
+    )
+
+    branch = data.get(
+        "branch",
+        "main"
+    )
+
+    yaml_content = data.get(
+        "yaml",
+        ""
+    )
+
+    # -----------------------------------------------------
+    # CONFIG
+    # -----------------------------------------------------
+    if not Config.has_github():
+
+        return {
+
+            "success": False,
+
+            "error": (
+                "GITHUB_TOKEN nao configurado"
+            )
+
+        }, 500
+
+    # -----------------------------------------------------
+    # VALIDATIONS
+    # -----------------------------------------------------
+    if not owner:
+
+        return {
+
+            "success": False,
+
+            "error": (
+                "owner obrigatorio"
+            )
+
+        }, 400
+
+    if not repo:
+
+        return {
+
+            "success": False,
+
+            "error": (
+                "repo obrigatorio"
+            )
+
+        }, 400
+
+    if not yaml_content.strip():
+
+        return {
+
+            "success": False,
+
+            "error": "yaml vazio"
+
+        }, 400
+
+    # -----------------------------------------------------
+    # YAML VALIDATION
+    # -----------------------------------------------------
+    valid, validation_msg = validate_yaml(
+        yaml_content
+    )
+
+    if not valid:
+
+        return {
+
+            "success": False,
+
+            "error": validation_msg
+
+        }, 400
+
+    # -----------------------------------------------------
+    # APPLY
+    # -----------------------------------------------------
+    try:
+
+        logger.info(
+            f"[GITHUB] aplicando workflow "
+            f"repo={owner}/{repo} "
+            f"branch={branch}"
+        )
+
+        response = create_or_update_workflow(
+
+            owner=owner,
+
+            repo=repo,
+
+            branch=branch,
+
+            yaml_content=yaml_content
+        )
+
+        # -------------------------------------------------
+        # SUCCESS
+        # -------------------------------------------------
+        if response.ok:
+
+            logger.info(
+                f"[OK] workflow aplicado "
+                f"repo={owner}/{repo}"
+            )
+
+            return {
+
+                "success": True,
+
+                "message": (
+                    "Workflow aplicado com sucesso"
+                )
+            }
+
+        # -------------------------------------------------
+        # GITHUB ERROR
+        # -------------------------------------------------
+        logger.error(
+            f"[GITHUB ERROR] "
+            f"{response.text}"
+        )
+
+        return {
+
+            "success": False,
+
+            "error": response.text
+
+        }, response.status_code
+
+    except Exception as e:
+
+        logger.exception(
+            "[GITHUB EXCEPTION]"
         )
 
         return {
