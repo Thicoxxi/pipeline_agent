@@ -1,7 +1,6 @@
 import logging
 from pathlib import Path
 from typing import Generator, Tuple
-
 import yaml
 from openai import OpenAI
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
