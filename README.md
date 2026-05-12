@@ -1,362 +1,392 @@
-# 🚀 Pipeline Agent
+# 🚀 Pipeline Generator AI
 
-Um **Agent de IA para geração automática de pipelines CI/CD (`.gitlab-ci.yml`)**, com streaming em tempo real, fallback inteligente entre LLMs e interface moderna estilo ChatGPT.
+Aplicação web para geração automática de pipelines CI/CD utilizando IA, com suporte para:
 
----
-
-## ✨ Funcionalidades
-
-* 🤖 Geração automática de pipelines GitLab CI
-* ⚡ Streaming em tempo real (SSE)
-* 🔄 Fallback automático entre LLMs:
-
-  * OpenAI
-  * Groq
-  * Local (fallback)
-* 🧠 Validação automática de YAML
-* 🎨 Interface estilo ChatGPT
-* ⌨️ Efeito de digitação (typing effect)
-* 📋 Copiar YAML
-* ⬇️ Download `.gitlab-ci.yml`
-* 🎯 Sugestões inteligentes de pipelines
-* 🌙 Dark mode
+- GitLab CI/CD
+- GitHub Actions
+- OpenAI
+- Groq
+- Templates locais
+- Publicação automática em repositórios
 
 ---
 
-## 🏗️ Estrutura do Projeto
+# ✨ Funcionalidades
 
-```
-pipeline_agent/
+## 🤖 Geração Inteligente de Pipelines
+
+A aplicação utiliza modelos LLM para gerar pipelines profissionais automaticamente com base em prompts em linguagem natural.
+
+Exemplos:
+
+- Pipeline Python com pytest
+- Pipeline .NET 9
+- Pipeline Terraform
+- Pipeline Java Maven
+- Pipeline Docker
+- Pipeline GitHub Actions
+- Pipeline GitLab CI
+
+---
+
+## 🔄 Providers Suportados
+
+A aplicação possui suporte para múltiplos providers:
+
+| Provider | Descrição |
+|---|---|
+| OpenAI | Utiliza GPT-4o-mini |
+| Groq | Utiliza llama-3.3-70b-versatile |
+| Local | Utiliza templates Jinja locais |
+| Auto | Faz fallback automático entre providers |
+
+---
+
+# 🧠 Arquitetura
+
+## Backend
+
+Tecnologias utilizadas:
+
+- Python
+- Flask
+- OpenAI SDK
+- Jinja2
+- PyYAML
+- Requests
+
+Principais arquivos:
+
+| Arquivo | Responsabilidade |
+|---|---|
+| `app.py` | API Flask principal |
+| `llm_agent.py` | Integração com IA |
+| `config.py` | Configurações e variáveis |
+| `gitlab_client.py` | Integração GitLab |
+| `github_client.py` | Integração GitHub |
+
+---
+
+## Frontend
+
+Tecnologias:
+
+- HTML5
+- CSS3
+- JavaScript Vanilla
+
+Principais arquivos:
+
+| Arquivo | Responsabilidade |
+|---|---|
+| `index.html` | Estrutura principal |
+| `chat.css` | Interface visual |
+| `chat.js` | Lógica frontend |
+
+---
+
+# 🎨 Interface
+
+A aplicação possui:
+
+- Layout moderno estilo DevOps Dashboard
+- Separação visual GitLab/GitHub
+- Editor YAML integrado
+- Validação automática YAML
+- Conversão GitLab → GitHub Actions
+- Download dos pipelines
+- Aplicação automática nos repositórios
+
+---
+
+# 📁 Estrutura Recomendada
+
+```text
+project/
 │
-├── src/
-│   ├── app.py           # Backend Flask
-│   └── llm_agent.py     # Lógica de LLM + fallback
+├── app/
+│   ├── app.py
+│   ├── llm_agent.py
+│   ├── config.py
+│   ├── gitlab_client.py
+│   └── github_client.py
 │
 ├── templates/
-│   └── index.html       # Frontend HTML
+│   ├── index.html
+│   └── pipelines/
 │
 ├── static/
-│   ├── chat.js          # Lógica do chat
-│   └── chat.css         # Estilo UI
+│   ├── chat.css
+│   └── chat.js
+│
+├── logs/
 │
 ├── .env
+├── requirements.txt
 └── README.md
 ```
 
 ---
 
-## ⚙️ Pré-requisitos
+# ⚙️ Configuração
 
-* Python 3.9+
-* pip
-
----
-
-## 🔧 Instalação
+## 1. Criar ambiente virtual
 
 ```bash
-git clone https://github.com/Thicoxxi/pipeline_agent.git
-cd pipeline-agent
-
 python -m venv .venv
+```
 
-# Windows
-.venv\Scripts\activate
+### Linux/macOS
 
-# Linux / Mac
+```bash
 source .venv/bin/activate
+```
 
-pip install flask openai pyyaml requests python-dotenv
+### Windows
+
+```powershell
+.venv\Scripts\activate
 ```
 
 ---
 
-## 🔑 Configuração (.env)
+## 2. Instalar dependências
 
-Crie um arquivo `.env` na raiz:
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+# 🔐 Variáveis de Ambiente
+
+Crie um arquivo `.env`:
 
 ```env
-OPENAI_API_KEY=sua_chave_openai
-GROQ_API_KEY=sua_chave_groq
+# OPENAI
+OPENAI_API_KEY=your_openai_key
+
+# GROQ
+GROQ_API_KEY=your_groq_key
+
+# GITLAB
+GITLAB_TOKEN=your_gitlab_token
+GITLAB_URL=https://gitlab.com/api/v4
+
+# GITHUB
+GITHUB_TOKEN=your_github_token
+GITHUB_API_URL=https://api.github.com
 ```
 
 ---
 
-## ▶️ Executar
+# ▶️ Executando
 
 ```bash
-python src/app.py
+python app.py
 ```
 
-Acesse no navegador:
+Aplicação disponível em:
 
-```
+```text
 http://localhost:5000
 ```
 
 ---
 
-## 🔄 Fallback Inteligente de LLM
+# 🔌 Endpoints
 
-O sistema escolhe automaticamente o melhor provider:
+## Stream de geração
 
-1. 🤖 OpenAI
-2. ⚡ Groq
-3. 🧠 Local (fallback)
+```http
+POST /api/stream
+```
 
-Se um falhar, o próximo é utilizado automaticamente.
-
----
-
-## 📡 API
-
-### POST `/api/stream`
-
-Streaming da resposta em tempo real.
-
-#### Request
+Body:
 
 ```json
 {
-  "prompt": "pipeline node com test",
+  "prompt": "pipeline python pytest docker",
   "provider": "auto"
 }
 ```
 
-#### Response (SSE)
-
-```
-data: { "chunk": "stages:" }
-data: { "provider": "groq" }
-data: { "validation": "✅ YAML válido" }
-```
-
 ---
 
-## 🧩 Estrutura Interna (Detalhada)
+## Aplicar pipeline GitLab
 
----
-
-### 🔹 `app.py` — Backend Flask
-
-Responsável por:
-
-* Servir o frontend
-* Receber prompts do usuário
-* Fazer streaming da resposta
-* Validar YAML
-
----
-
-### 🔁 Fluxo
-
+```http
+POST /api/gitlab/apply
 ```
-Usuário → /api/stream → LLM → Streaming → Frontend
+
+Body:
+
+```json
+{
+  "project_id": "123",
+  "branch": "main",
+  "yaml": "stages: ..."
+}
 ```
 
 ---
 
-### 📌 Partes principais
+## Aplicar workflow GitHub
 
-#### Rota principal
+```http
+POST /api/github/apply
+```
 
-```python
-@app.route("/")
-def home():
-    return render_template("index.html")
+Body:
+
+```json
+{
+  "owner": "usuario",
+  "repo": "repositorio",
+  "branch": "main",
+  "yaml": "name: CI"
+}
 ```
 
 ---
 
-#### Endpoint de streaming
+# 🧩 Funcionamento Interno
 
-```python
-@app.route("/api/stream", methods=["POST"])
-def stream():
+## Fluxo da aplicação
+
+1. Usuário envia prompt
+2. Backend escolhe provider
+3. LLM gera pipeline YAML
+4. YAML é validado
+5. Frontend exibe GitLab e GitHub
+6. Usuário pode:
+   - editar
+   - baixar
+   - publicar
+
+---
+
+# 🛡️ Validações
+
+A aplicação valida:
+
+- YAML válido
+- Campos obrigatórios
+- Providers configurados
+- Tokens de integração
+
+---
+
+# 🔄 Fallback Inteligente
+
+No modo `auto`:
+
+1. Tenta Groq
+2. Se falhar → OpenAI
+3. Se falhar → Template Local
+
+---
+
+# 📦 Templates Locais
+
+Templates disponíveis:
+
+- .NET 8
+- .NET 9
+- Java
+- Python
+- Terraform
+
+Renderizados via Jinja2.
+
+---
+
+# 🚀 Melhorias Futuras
+
+Sugestões para evolução:
+
+- Monaco Editor
+- Syntax Highlight
+- Histórico de pipelines
+- Login OAuth GitHub/GitLab
+- Deploy Docker
+- Kubernetes deployment
+- Multi-workflow support
+- Dark/Light Theme
+- Banco de dados
+- Pipeline templates marketplace
+
+---
+
+# 🐳 Docker
+
+Exemplo de Dockerfile:
+
+```dockerfile
+FROM python:3.12
+
+WORKDIR /app
+
+COPY . .
+
+RUN pip install -r requirements.txt
+
+EXPOSE 5000
+
+CMD ["python", "app.py"]
 ```
 
 ---
 
-#### Generator de resposta
+# 📋 Dependências Recomendadas
 
-```python
-def generate():
-    for chunk, prov in stream_llm(prompt, provider):
-        yield f"data: ...\n\n"
+```txt
+flask
+openai
+python-dotenv
+pyyaml
+jinja2
+requests
 ```
 
 ---
 
-#### Validação YAML
+# 🔥 Destaques Técnicos
 
-```python
-yaml.safe_load(full)
-```
+## Backend
 
----
+- Streaming SSE
+- Logging rotativo
+- Fallback inteligente
+- Validação YAML
+- Integração REST APIs
 
-#### Retorno SSE
+## Frontend
 
-```python
-return Response(generate(), mimetype="text/event-stream")
-```
-
----
-
-### 🔹 `llm_agent.py` — Orquestração de LLMs
-
-Responsável por:
-
-* Escolher o modelo
-* Fazer fallback automático
-* Fazer streaming
+- Interface responsiva
+- Conversão automática GitHub
+- Validação client-side
+- Download de arquivos
+- Atualização dinâmica
 
 ---
 
-### 🔄 Estratégia
+# 📝 Observações
 
-```
-OpenAI → Groq → Local
-```
-
----
-
-### 📌 Função principal
-
-#### `stream_llm(prompt, provider)`
-
-Retorna:
-
-```python
-yield chunk, provider
-```
+- O projeto já possui arquitetura muito bem organizada.
+- O frontend está moderno e bem estruturado.
+- A separação GitLab/GitHub ficou excelente.
+- O fallback entre providers está muito bom.
+- O uso de templates locais aumenta a resiliência.
 
 ---
 
-### Providers
+# 📄 Licença
 
-#### OpenAI
-
-* API oficial
-* Pode falhar por quota
+MIT License
 
 ---
 
-#### Groq
+# 👨‍💻 Autor
 
-* Alternativa gratuita
-* Necessita `GROQ_API_KEY`
-
----
-
-#### Local
-
-* Fallback final
-* Garante funcionamento mesmo offline
-
----
-
-## 🧠 Exemplos de uso
-
-* criar pipeline dotnet core 10
-* pipeline node com npm install e test
-* pipeline python com pytest
-* pipeline docker build e push
-* pipeline terraform aws
-
----
-
-## 🎨 UI Features
-
-* Interface estilo ChatGPT
-* Chips de sugestão
-* Syntax Highlight YAML
-* Spinner de carregamento
-* Cursor piscando
-* Streaming em tempo real
-
----
-
-## 🛠️ Tecnologias
-
-* Flask
-* JavaScript (Vanilla)
-* Prism.js
-* PyYAML
-* OpenAI API
-* Groq API
-
----
-
-## 🐛 Problemas comuns
-
----
-
-### ❌ TemplateNotFound: index.html
-
-Verifique se existe:
-
-```
-templates/index.html
-```
-
----
-
-### ❌ OpenAI quota exceeded
-
-Solução:
-
-* Ativar billing
-* Ou usar Groq
-
----
-
-### ❌ Groq model deprecated
-
-Atualize modelo no `llm_agent.py`:
-
-```python
-model="mixtral-8x7b-32768"
-```
-
----
-
-### ❌ YAML inválido
-
-Causa comum:
-
-* LLM retornando texto + explicação
-
-Solução:
-
-```
-"Retorne apenas YAML, sem explicações."
-```
-
----
-
-## 🚀 Melhorias futuras
-
-* 💾 Histórico persistente
-* 📂 Exportar múltiplos pipelines
-* 🔐 Autenticação
-* ☁️ Deploy com Docker
-* 📊 Templates reutilizáveis
-
----
-
-## 🤝 Contribuição
-
-Pull requests são bem-vindos 🚀
-
----
-
-## 📄 Licença
-
-MIT
-
----
-
-## ⭐ Se curtiu
-
-Deixe uma estrela no repositório 😄
+Thiago Liberati

@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function showWelcome(){
 
     const div = document.createElement("div");
+
     div.className = "welcome-box";
 
     div.innerHTML = `
@@ -173,7 +174,9 @@ document.addEventListener("DOMContentLoaded", () => {
       - uses: actions/checkout@v4
 
       - run: |
-${parsed[key].script.map(s => "          " + s).join("\n")}
+${parsed[key].script.map(
+  s => "          " + s
+).join("\n")}
 `;
         }
       }
@@ -201,7 +204,9 @@ ${jobs}`;
 
     wrap.className = "message assistant";
 
+    // =========================================
     // HEADER
+    // =========================================
     const header = document.createElement("div");
 
     header.className = "assistant-header";
@@ -210,103 +215,90 @@ ${jobs}`;
 
     providerBadge.className = "provider-badge";
 
-    providerBadge.innerHTML = `🤖 ${providerSelect.value}`;
+    providerBadge.innerHTML =
+      `🤖 ${providerSelect.value}`;
 
     const updateBtn = document.createElement("button");
 
     updateBtn.className = "update-btn";
 
-    updateBtn.innerHTML = "♻️ Atualizar Pipeline";
+    updateBtn.innerHTML =
+      "♻️ Atualizar Pipeline";
 
-    header.append(providerBadge, updateBtn);
+    header.append(
+      providerBadge,
+      updateBtn
+    );
 
+    // =========================================
     // SPLIT
+    // =========================================
     const split = document.createElement("div");
 
     split.className = "split-view";
 
     // =========================================
-    // LEFT PANEL
+    // LEFT PANEL - GITLAB
     // =========================================
     const left = document.createElement("div");
 
-    left.className = "panel";
+    left.className =
+      "panel gitlab-panel";
 
     const leftTop = document.createElement("div");
 
     leftTop.className = "panel-top";
 
     leftTop.innerHTML = `
-      <span>🦊 GitLab CI</span>
+      <div class="panel-title">
+        🦊 GitLab CI
+      </div>
     `;
 
-    const gitlabButtons = document.createElement("div");
+    const gitlabButtons =
+      document.createElement("div");
 
-    gitlabButtons.style.display = "flex";
-    gitlabButtons.style.gap = "10px";
-    gitlabButtons.style.flexWrap = "wrap";
+    gitlabButtons.className =
+      "panel-buttons";
 
     // SAVE GITLAB
-    const saveGitlab = document.createElement("button");
+    const saveGitlab =
+      document.createElement("button");
 
     saveGitlab.className = "save-btn";
 
-    saveGitlab.innerHTML = "💾 salvar .gitlab-ci.yml";
+    saveGitlab.innerHTML =
+      "💾 salvar .gitlab-ci.yml";
 
     // APPLY GITLAB
-    const applyBtn = document.createElement("button");
+    const applyBtn =
+      document.createElement("button");
 
     applyBtn.className = "save-btn";
 
-    applyBtn.innerHTML = "🦊 Aplicar no GitLab";
+    applyBtn.innerHTML =
+      "🦊 Aplicar no GitLab";
 
-    gitlabButtons.append(saveGitlab, applyBtn);
+    gitlabButtons.append(
+      saveGitlab,
+      applyBtn
+    );
 
     leftTop.appendChild(gitlabButtons);
 
-    const gitlabEditor = document.createElement("textarea");
+    const gitlabEditor =
+      document.createElement("textarea");
 
     gitlabEditor.className = "editor";
 
-    left.append(leftTop, gitlabEditor);
-
     // =========================================
-    // RIGHT PANEL
+    // GITLAB FORM
     // =========================================
-    const right = document.createElement("div");
+    const gitlabForm =
+      document.createElement("div");
 
-    right.className = "panel";
-
-    const rightTop = document.createElement("div");
-
-    rightTop.className = "panel-top";
-
-    rightTop.innerHTML = `
-      <span>🐙 GitHub Actions</span>
-    `;
-
-    const saveGithub = document.createElement("button");
-
-    saveGithub.className = "save-btn";
-
-    saveGithub.innerHTML = "💾 salvar github-actions.yml";
-
-    rightTop.appendChild(saveGithub);
-
-    const githubEditor = document.createElement("textarea");
-
-    githubEditor.className = "editor";
-
-    right.append(rightTop, githubEditor);
-
-    split.append(left, right);
-
-    // =========================================
-    // GITLAB INLINE FORM
-    // =========================================
-    const gitlabForm = document.createElement("div");
-
-    gitlabForm.className = "gitlab-form";
+    gitlabForm.className =
+      "gitlab-form";
 
     gitlabForm.innerHTML = `
       <div class="gitlab-form-grid">
@@ -314,13 +306,13 @@ ${jobs}`;
         <input
           type="text"
           class="gitlab-input"
-          placeholder="🆔 Informe o GitLab Project ID"
+          placeholder="🆔 GitLab Project ID"
         >
 
         <input
           type="text"
           class="gitlab-input"
-          placeholder="🌿 Branch"
+          placeholder="🌿 GitLab Branch"
           value="main"
         >
 
@@ -328,22 +320,152 @@ ${jobs}`;
     `;
 
     const projectIdInput =
-      gitlabForm.querySelectorAll(".gitlab-input")[0];
+      gitlabForm.querySelectorAll(
+        ".gitlab-input"
+      )[0];
 
     const branchInput =
-      gitlabForm.querySelectorAll(".gitlab-input")[1];
+      gitlabForm.querySelectorAll(
+        ".gitlab-input"
+      )[1];
+
+    left.append(
+      leftTop,
+      gitlabEditor,
+      gitlabForm
+    );
+
+    // =========================================
+    // RIGHT PANEL - GITHUB
+    // =========================================
+    const right =
+      document.createElement("div");
+
+    right.className =
+      "panel github-panel";
+
+    const rightTop =
+      document.createElement("div");
+
+    rightTop.className =
+      "panel-top";
+
+    rightTop.innerHTML = `
+      <div class="panel-title">
+        🐙 GitHub Actions
+      </div>
+    `;
+
+    const githubButtons =
+      document.createElement("div");
+
+    githubButtons.className =
+      "panel-buttons";
+
+    // SAVE GITHUB
+    const saveGithub =
+      document.createElement("button");
+
+    saveGithub.className = "save-btn";
+
+    saveGithub.innerHTML =
+      "💾 salvar github-actions.yml";
+
+    // APPLY GITHUB
+    const applyGithubBtn =
+      document.createElement("button");
+
+    applyGithubBtn.className =
+      "save-btn";
+
+    applyGithubBtn.innerHTML =
+      "🐙 Aplicar no GitHub";
+
+    githubButtons.append(
+      saveGithub,
+      applyGithubBtn
+    );
+
+    rightTop.appendChild(githubButtons);
+
+    const githubEditor =
+      document.createElement("textarea");
+
+    githubEditor.className =
+      "editor";
+
+    // =========================================
+    // GITHUB FORM
+    // =========================================
+    const githubForm =
+      document.createElement("div");
+
+    githubForm.className =
+      "gitlab-form";
+
+    githubForm.innerHTML = `
+      <div class="gitlab-form-grid">
+
+        <input
+          type="text"
+          class="gitlab-input"
+          placeholder="🐙 GitHub Owner"
+        >
+
+        <input
+          type="text"
+          class="gitlab-input"
+          placeholder="📦 GitHub Repo"
+        >
+
+        <input
+          type="text"
+          class="gitlab-input"
+          placeholder="🌿 GitHub Branch"
+          value="main"
+        >
+
+      </div>
+    `;
+
+    const githubOwnerInput =
+      githubForm.querySelectorAll(
+        ".gitlab-input"
+      )[0];
+
+    const githubRepoInput =
+      githubForm.querySelectorAll(
+        ".gitlab-input"
+      )[1];
+
+    const githubBranchInput =
+      githubForm.querySelectorAll(
+        ".gitlab-input"
+      )[2];
+
+    right.append(
+      rightTop,
+      githubEditor,
+      githubForm
+    );
+
+    split.append(
+      left,
+      right
+    );
 
     // =========================================
     // VALIDATION
     // =========================================
-    const validation = document.createElement("div");
+    const validation =
+      document.createElement("div");
 
-    validation.className = "validation";
+    validation.className =
+      "validation";
 
     wrap.append(
       header,
       split,
-      gitlabForm,
       validation
     );
 
@@ -356,7 +478,8 @@ ${jobs}`;
 
       updateBtn.disabled = true;
 
-      updateBtn.innerHTML = "⏳ validando...";
+      updateBtn.innerHTML =
+        "⏳ validando...";
 
       const result = validateYAML(
         gitlabEditor.value
@@ -364,7 +487,8 @@ ${jobs}`;
 
       if(!result.valid){
 
-        validation.innerHTML = result.message;
+        validation.innerHTML =
+          result.message;
 
         validation.className =
           "validation error";
@@ -383,7 +507,9 @@ ${jobs}`;
       }
 
       githubEditor.value =
-        convertToGitHub(gitlabEditor.value);
+        convertToGitHub(
+          gitlabEditor.value
+        );
 
       validation.innerHTML =
         "✅ Pipeline atualizado com sucesso";
@@ -406,7 +532,8 @@ ${jobs}`;
         projectIdInput.value.trim();
 
       const branch =
-        branchInput.value.trim() || "main";
+        branchInput.value.trim() ||
+        "main";
 
       if(!projectId){
 
@@ -440,7 +567,8 @@ ${jobs}`;
             method:"POST",
 
             headers:{
-              "Content-Type":"application/json"
+              "Content-Type":
+                "application/json"
             },
 
             body: JSON.stringify({
@@ -490,6 +618,123 @@ ${jobs}`;
 
         applyBtn.innerHTML =
           "🦊 Aplicar no GitLab";
+      }
+    };
+
+    // =========================================
+    // APPLY GITHUB
+    // =========================================
+    applyGithubBtn.onclick =
+      async () => {
+
+      const owner =
+        githubOwnerInput.value.trim();
+
+      const repo =
+        githubRepoInput.value.trim();
+
+      const branch =
+        githubBranchInput.value.trim()
+        || "main";
+
+      if(!owner){
+
+        validation.innerHTML =
+          "❌ Informe o GitHub Owner";
+
+        validation.className =
+          "validation error";
+
+        githubOwnerInput.focus();
+
+        return;
+      }
+
+      if(!repo){
+
+        validation.innerHTML =
+          "❌ Informe o GitHub Repo";
+
+        validation.className =
+          "validation error";
+
+        githubRepoInput.focus();
+
+        return;
+      }
+
+      applyGithubBtn.disabled = true;
+
+      applyGithubBtn.innerHTML =
+        "⏳ Aplicando...";
+
+      validation.innerHTML =
+        "🚀 Publicando workflow no GitHub...";
+
+      validation.className =
+        "validation success";
+
+      try{
+
+        const res = await fetch(
+          "/api/github/apply",
+          {
+            method:"POST",
+
+            headers:{
+              "Content-Type":
+                "application/json"
+            },
+
+            body: JSON.stringify({
+              owner,
+              repo,
+              branch,
+              yaml: githubEditor.value
+            })
+          }
+        );
+
+        const data = await res.json();
+
+        if(res.ok){
+
+          validation.innerHTML = `
+✅ Workflow aplicado no GitHub
+
+🐙 Repo: ${owner}/${repo}
+🌿 Branch: ${branch}
+`;
+
+          validation.className =
+            "validation success";
+
+        }else{
+
+          validation.innerHTML =
+            `❌ ${data.error || 'Erro GitHub'}`;
+
+          validation.className =
+            "validation error";
+        }
+
+      }catch(err){
+
+        console.error(err);
+
+        validation.innerHTML =
+          "❌ Falha na integração GitHub";
+
+        validation.className =
+          "validation error";
+
+      }finally{
+
+        applyGithubBtn.disabled =
+          false;
+
+        applyGithubBtn.innerHTML =
+          "🐙 Aplicar no GitHub";
       }
     };
 
@@ -607,7 +852,8 @@ ${jobs}`;
           method: "POST",
 
           headers:{
-            "Content-Type":"application/json"
+            "Content-Type":
+              "application/json"
           },
 
           body: JSON.stringify({
@@ -677,18 +923,21 @@ ${jobs}`;
   // =========================================
   // ENTER
   // =========================================
-  input.addEventListener("keydown",(e)=>{
+  input.addEventListener(
+    "keydown",
+    (e)=>{
 
-    if(
-      e.key === "Enter" &&
-      !e.shiftKey
-    ){
+      if(
+        e.key === "Enter" &&
+        !e.shiftKey
+      ){
 
-      e.preventDefault();
+        e.preventDefault();
 
-      sendBtn.click();
+        sendBtn.click();
+      }
     }
-  });
+  );
 
   showWelcome();
 
