@@ -1,4 +1,4 @@
-from src.llm_agent import extract_pipeline_params
+from backend.llm_agent import extract_pipeline_params
 
 examples = [
     'Gerar pipeline para .NET Core 8 com upload no nexus my-repo e versão 8',

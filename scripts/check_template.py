@@ -1,4 +1,4 @@
-from src.app import app
+from backend.app import app
 
 print('template_folder=', app.template_folder)
 with app.test_client() as c:

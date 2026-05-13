@@ -1,5 +1,5 @@
 import os
-from src.llm_agent import extract_pipeline_params
+from backend.llm_agent import extract_pipeline_params
 
 
 def test_extract_dotnet_framework_with_nexus():
