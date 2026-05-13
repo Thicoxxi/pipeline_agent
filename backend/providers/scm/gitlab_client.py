@@ -4,92 +4,95 @@ from core.config import Config
 
 
 # =========================================================
+# GITLAB API
+# =========================================================
+BASE_URL = (
+    Config.GITLAB_URL.rstrip("/")
+)
+
+TOKEN = (
+    Config.GITLAB_TOKEN
+)
+
+
+# =========================================================
 # CREATE OR UPDATE PIPELINE
 # =========================================================
 def create_or_update_pipeline(
-
     project_id: str,
-
     branch: str,
-
     yaml_content: str
 ):
 
-    base_url = Config.GITLAB_URL.rstrip("/")
-
-    token = Config.GITLAB_TOKEN
-
+    # =====================================================
+    # URL
+    # =====================================================
     url = (
-        f"{base_url}"
-        f"/api/v4/projects/{project_id}"
-        f"/repository/files/.gitlab-ci.yml"
+        f"{BASE_URL}/projects/"
+        f"{project_id}/repository/files/"
+        f".gitlab-ci.yml"
     )
 
     headers = {
-
-        "PRIVATE-TOKEN": token
+        "PRIVATE-TOKEN": TOKEN
     }
 
     # =====================================================
     # CHECK FILE
     # =====================================================
-    check = requests.get(
-
+    check_response = requests.get(
         url,
-
         headers=headers,
-
         params={
             "ref": branch
         }
     )
 
     # =====================================================
-    # UPDATE
+    # FILE EXISTS -> UPDATE
     # =====================================================
-    if check.status_code == 200:
+    if check_response.status_code == 200:
 
         payload = {
-
             "branch": branch,
-
             "content": yaml_content,
-
             "commit_message":
-                "update pipeline"
+                "update gitlab pipeline"
         }
 
         response = requests.put(
-
             url,
-
             headers=headers,
-
             json=payload
         )
 
     # =====================================================
-    # CREATE
+    # FILE DOES NOT EXIST -> CREATE
     # =====================================================
-    else:
+    elif check_response.status_code == 404:
 
         payload = {
-
             "branch": branch,
-
             "content": yaml_content,
-
             "commit_message":
-                "create pipeline"
+                "create gitlab pipeline"
         }
 
         response = requests.post(
-
             url,
-
             headers=headers,
-
             json=payload
+        )
+
+    # =====================================================
+    # OTHER ERROR
+    # =====================================================
+    else:
+
+        raise Exception(
+            f"GitLab Error: "
+            f"{check_response.status_code} - "
+            f"{check_response.text}"
         )
 
     # =====================================================
@@ -100,7 +103,6 @@ def create_or_update_pipeline(
         return response.json()
 
     raise Exception(
-
         f"GitLab Error: "
         f"{response.status_code} - "
         f"{response.text}"
