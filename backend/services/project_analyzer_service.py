@@ -10,17 +10,14 @@ class ProjectAnalyzerService:
         platform="gitlab"
     ):
 
-        # =====================================================
-        # BUILD PROJECT SUMMARY
-        # =====================================================
         summary = []
 
+        # =====================================================
+        # BUILD PROJECT CONTEXT
+        # =====================================================
         for file in files:
 
-            name = file.get(
-                "name",
-                "unknown"
-            )
+            name = file.get("name")
 
             stack = file.get(
                 "stack",
@@ -33,14 +30,11 @@ class ProjectAnalyzerService:
             )[:4000]
 
             summary.append(
-
-                f"""
-FILE: {name}
-STACK: {stack}
-
-CONTENT:
-{content}
-"""
+                (
+                    f"\nFILE: {name}"
+                    f"\nSTACK: {stack}"
+                    f"\nCONTENT:\n{content}"
+                )
             )
 
         joined = "\n".join(summary)
@@ -49,109 +43,139 @@ CONTENT:
         # PROMPT
         # =====================================================
         prompt = f"""
-Você é um especialista sênior em DevOps, CI/CD e arquitetura de software.
+Você é um arquiteto DevOps SRE especialista em CI/CD.
 
-Analise os arquivos do projeto abaixo e gere um pipeline COMPLETO e PROFISSIONAL para {platform}.
+Sua tarefa é analisar COMPLETAMENTE um projeto real
+e gerar um pipeline profissional para {platform}.
+
+ANÁLISE O PROJETO COMO UM TODO.
+
+Detecte automaticamente:
+
+- backend
+- frontend
+- framework principal
+- linguagem principal
+- testes
+- docker
+- terraform
+- kubernetes
+- build tools
+- package managers
+- dependências
+
+EXEMPLOS:
+- Flask
+- FastAPI
+- Django
+- React
+- Vue
+- Next.js
+- Node.js
+- Java
+- Maven
+- Gradle
+- .NET
+- Terraform
+- Docker
 
 REGRAS OBRIGATÓRIAS:
 
-- Retorne SOMENTE YAML puro
-- NÃO retorne JSON
-- NÃO retorne markdown
-- NÃO use ```yaml
-- NÃO explique nada
-- NÃO escreva comentários fora do YAML
-- NÃO escreva "data:"
-- NÃO escreva "gitlab:"
-- NÃO escreva "github:"
-- Gere apenas o conteúdo final do pipeline
+- retornar SOMENTE YAML
+- NÃO retornar JSON
+- NÃO retornar markdown
+- NÃO usar ```
+- NÃO explicar nada
+- NÃO adicionar comentários fora do YAML
+- gerar pipeline REAL baseado nos arquivos
+- usar boas práticas CI/CD
+- usar cache quando apropriado
+- usar install/test/build/deploy
+- detectar corretamente o tipo do projeto
 
-REQUISITOS:
-
-- detectar stack automaticamente
-- adicionar stages/jobs corretos
-- incluir install/build/test/lint se aplicável
-- usar imagens modernas
-- otimizar cache quando possível
-- usar boas práticas de CI/CD
-- evitar configurações inseguras
-- pipeline deve funcionar em produção
-
-ARQUIVOS DO PROJETO:
+PROJETO:
 
 {joined}
 """
 
         # =====================================================
-        # STREAM CAPTURE
+        # STREAM RESULT
         # =====================================================
         chunks = []
 
         for chunk in StreamService.generate(
-            prompt,
-            provider
+            prompt=prompt,
+            provider=provider,
+            sse=False
         ):
 
-            # =================================================
-            # IGNORA SSE PREFIX
-            # =================================================
-            if isinstance(chunk, str):
-
-                chunk = chunk.replace(
-                    "data:",
-                    ""
-                )
+            if not chunk:
+                continue
 
             chunks.append(chunk)
 
-        # =====================================================
-        # FINAL RESPONSE
-        # =====================================================
-        response = "".join(chunks).strip()
+        result = "".join(chunks).strip()
 
         # =====================================================
-        # REMOVE MARKDOWN
+        # CLEAN MARKDOWN
         # =====================================================
-        response = response.replace(
+        result = result.replace(
             "```yaml",
             ""
         )
 
-        response = response.replace(
+        result = result.replace(
             "```yml",
             ""
         )
 
-        response = response.replace(
+        result = result.replace(
             "```",
             ""
         )
 
-        response = response.strip()
+        # =====================================================
+        # CLEAN JSON RESPONSE
+        # =====================================================
+        if result.startswith("{"):
+
+            # remove wrapper json
+            if '"gitlab":' in result:
+
+                result = result.split(
+                    '"gitlab":',
+                    1
+                )[1]
+
+            elif '"github":' in result:
+
+                result = result.split(
+                    '"github":',
+                    1
+                )[1]
+
+            result = result.strip()
+
+            # remove aspas iniciais
+            if result.startswith('"'):
+                result = result[1:]
+
+            # remove fechamento
+            if result.endswith('"}'):
+                result = result[:-2]
+
+            # decode \n
+            result = result.encode().decode(
+                "unicode_escape"
+            )
 
         # =====================================================
-        # REMOVE JSON WRAPPER
+        # FINAL CLEAN
         # =====================================================
-        if response.startswith("{"):
+        result = result.strip()
 
-            try:
+        # remove lixo comum
+        if result.startswith("yaml"):
+            result = result[4:].strip()
 
-                import json
-
-                data = json.loads(response)
-
-                response = (
-
-                    data.get("pipeline")
-
-                    or data.get("gitlab")
-
-                    or data.get("github")
-
-                    or response
-                )
-
-            except Exception:
-                pass
-
-        return response.strip()
+        return result

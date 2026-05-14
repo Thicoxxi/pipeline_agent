@@ -5,18 +5,14 @@ from llm_agent import stream_llm
 
 logger = logging.getLogger(__name__)
 
-# =========================================================
-# STREAM SERVICE
-# =========================================================
+
 class StreamService:
 
-    # =====================================================
-    # GENERATE
-    # =====================================================
     @staticmethod
     def generate(
         prompt: str,
-        provider: str = "auto"
+        provider: str = "auto",
+        sse: bool = True
     ):
 
         try:
@@ -25,26 +21,38 @@ class StreamService:
                 "[STREAM] iniciando geração"
             )
 
-            # =================================================
-            # STREAM LLM
-            # =================================================
             for event in stream_llm(
                 prompt,
                 provider
             ):
 
-                logger.info(
-                    f"[STREAM EVENT] {event}"
-                )
+                # =====================================
+                # FRONTEND SSE
+                # =====================================
+                if sse:
 
-                # =============================================
-                # SSE FORMAT
-                # =============================================
-                payload = json.dumps(event)
+                    payload = json.dumps(event)
 
-                yield (
-                    f"data: {payload}\n\n"
-                )
+                    yield f"data: {payload}\n\n"
+
+                # =====================================
+                # INTERNAL RAW
+                # =====================================
+                else:
+
+                    if isinstance(event, dict):
+
+                        if event.get("gitlab"):
+                            yield event["gitlab"]
+
+                        elif event.get("github"):
+                            yield event["github"]
+
+                        elif event.get("content"):
+                            yield event["content"]
+
+                    else:
+                        yield str(event)
 
             logger.info(
                 "[STREAM] finalizado"
@@ -56,10 +64,16 @@ class StreamService:
                 "[STREAM ERROR]"
             )
 
-            error_payload = json.dumps({
-                "error": str(e)
-            })
+            if sse:
 
-            yield (
-                f"data: {error_payload}\n\n"
-            )
+                error_payload = json.dumps({
+                    "error": str(e)
+                })
+
+                yield (
+                    f"data: {error_payload}\n\n"
+                )
+
+            else:
+
+                raise

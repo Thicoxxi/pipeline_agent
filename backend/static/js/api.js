@@ -25,9 +25,16 @@ export async function sendPrompt({
     }
 
     const reader = res.body.getReader();
+
     const decoder = new TextDecoder();
 
     let buffer = "";
+
+    // =========================================
+    // acumuladores
+    // =========================================
+    let gitlabContent = "";
+    let githubContent = "";
 
     while (true) {
 
@@ -43,56 +50,87 @@ export async function sendPrompt({
         { stream: true }
       );
 
-      const events =
-        buffer.split("\n\n");
+      const events = buffer.split("\n\n");
 
-      buffer =
-        events.pop() || "";
+      buffer = events.pop() || "";
 
       for (const event of events) {
 
         if (!event.startsWith("data:"))
           continue;
 
-        const raw =
-          event.replace("data:", "").trim();
+        const raw = event
+          .replace("data:", "")
+          .trim();
 
-        if (!raw) continue;
+        if (!raw)
+          continue;
 
         try {
 
-          const json =
-            JSON.parse(raw);
+          const json = JSON.parse(raw);
 
           console.log("📦 SSE:", json);
 
-          // =========================
+          // =====================================
           // PROVIDER
-          // =========================
+          // =====================================
           if (json.provider) {
-            onProvider?.(json.provider);
+
+            onProvider?.(
+              json.provider
+            );
           }
 
-          // =========================
+          // =====================================
           // GITLAB
-          // =========================
+          // =====================================
           if (json.gitlab) {
-            onGitlab?.(json.gitlab);
+
+            let chunk = json.gitlab;
+
+            // remove lixo json/stringificado
+            chunk = chunk
+              .replace(/^"+/, "")
+              .replace(/"+$/, "");
+
+            gitlabContent += chunk;
+
+            onGitlab?.(
+              gitlabContent
+            );
           }
 
-          // =========================
+          // =====================================
           // GITHUB
-          // =========================
+          // =====================================
           if (json.github) {
-            onGithub?.(json.github);
+
+            let chunk = json.github;
+
+            chunk = chunk
+              .replace(/^"+/, "")
+              .replace(/"+$/, "");
+
+            githubContent += chunk;
+
+            onGithub?.(
+              githubContent
+            );
           }
 
-          // =========================
+          // =====================================
           // ERROR
-          // =========================
+          // =====================================
           if (json.error) {
-            console.error(json.error);
-            onError?.(json.error);
+
+            console.error(
+              json.error
+            );
+
+            onError?.(
+              json.error
+            );
           }
 
         } catch (err) {
@@ -100,6 +138,11 @@ export async function sendPrompt({
           console.error(
             "Erro parse SSE:",
             err
+          );
+
+          console.error(
+            "RAW EVENT:",
+            raw
           );
 
           onError?.(err);
