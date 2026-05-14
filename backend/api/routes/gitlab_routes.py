@@ -1,78 +1,54 @@
-from flask import (
-    Blueprint,
-    request,
-    jsonify
-)
+import logging
+
+from flask import Blueprint, request, jsonify
 
 from core.config import Config
+from providers.scm.gitlab_client import create_or_update_pipeline
 
-from providers.scm.gitlab_client import (
-    create_or_update_pipeline
-)
+logger = logging.getLogger(__name__)
 
-gitlab_bp = Blueprint(
-    "gitlab",
-    __name__
-)
+gitlab_bp = Blueprint("gitlab", __name__)
+
 
 # =========================================================
 # APPLY GITLAB PIPELINE
 # =========================================================
-@gitlab_bp.route(
-    "/api/gitlab/apply",
-    methods=["POST"]
-)
+@gitlab_bp.route("/api/gitlab/apply", methods=["POST"])
 def apply_gitlab_pipeline():
-
     try:
+        data = request.get_json(force=True) or {}
 
-        data = request.get_json(force=True)
+        project_id = (data.get("project_id") or "").strip()
+        branch = (data.get("branch") or "main").strip()
+        yaml_content = data.get("yaml") or ""
 
-        project_id = (
-            data.get("project_id", "")
-            .strip()
-        )
-
-        branch = (
-            data.get("branch", "main")
-            .strip()
-        )
-
-        yaml_content = data.get(
-            "yaml",
-            ""
-        )
-
-        # =================================================
+        # =====================================================
         # VALIDATION
-        # =================================================
+        # =====================================================
         if not project_id:
-
             return jsonify({
-                "error":
-                    "GitLab Project ID é obrigatório"
+                "success": False,
+                "error": "GitLab project_id é obrigatório"
             }), 400
 
-        if not yaml_content:
-
+        if not yaml_content.strip():
             return jsonify({
-                "error":
-                    "YAML vazio"
+                "success": False,
+                "error": "YAML vazio"
             }), 400
 
-        # =================================================
-        # TOKEN
-        # =================================================
+        # =====================================================
+        # CONFIG CHECK
+        # =====================================================
         if not getattr(Config, "GITLAB_TOKEN", None):
-
             return jsonify({
-                "error":
-                    "GITLAB_TOKEN não configurado"
+                "success": False,
+                "error": "GITLAB_TOKEN não configurado"
             }), 500
 
-        # =================================================
+        # =====================================================
         # APPLY
-        # =================================================
+        # =====================================================
         result = create_or_update_pipeline(
             project_id=project_id,
             branch=branch,
@@ -81,13 +57,12 @@ def apply_gitlab_pipeline():
 
         return jsonify({
             "success": True,
-            "message":
-                "✅ Pipeline aplicada com sucesso no GitLab",
+            "message": "Pipeline aplicada com sucesso no GitLab",
             "data": result
-        })
+        }), 200
 
     except Exception as e:
-
+        logger.exception("Erro no apply_gitlab_pipeline")
         return jsonify({
             "success": False,
             "error": str(e)

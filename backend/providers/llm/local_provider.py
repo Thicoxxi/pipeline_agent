@@ -171,5 +171,4 @@ build:
 """
 
         for c in content:
-
-            yield c, "local"
+            yield c

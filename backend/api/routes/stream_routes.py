@@ -1,53 +1,43 @@
-from flask import (
-    Blueprint,
-    request,
-    Response
-)
+import logging
 
-from services.stream_service import (
-    StreamService
-)
+from flask import Blueprint, request, Response, jsonify
 
-stream_bp = Blueprint(
-    "stream",
-    __name__
-)
+from services.stream_service import StreamService
+
+logger = logging.getLogger(__name__)
+
+stream_bp = Blueprint("stream", __name__)
+
 
 # =========================================================
-# STREAM
+# STREAM LLM
 # =========================================================
-@stream_bp.route(
-    "/api/stream",
-    methods=["POST"]
-)
+@stream_bp.route("/api/stream", methods=["POST"])
 def stream():
+    try:
+        data = request.get_json(force=True) or {}
 
-    data = request.get_json(
-        force=True
-    )
+        prompt = (data.get("prompt") or "").strip()
+        provider = (data.get("provider") or "auto").strip().lower()
 
-    prompt = data.get(
-        "prompt",
-        ""
-    ).strip()
+        # =====================================================
+        # VALIDATION
+        # =====================================================
+        if not prompt:
+            return jsonify({
+                "error": "Prompt vazio"
+            }), 400
 
-    provider = data.get(
-        "provider",
-        "auto"
-    )
+        # =====================================================
+        # STREAM RESPONSE
+        # =====================================================
+        return Response(
+            StreamService.generate(prompt, provider),
+            mimetype="text/event-stream"
+        )
 
-    if not prompt:
-
-        return {
-            "error": "Prompt vazio"
-        }, 400
-
-    return Response(
-
-        StreamService.generate(
-            prompt,
-            provider
-        ),
-
-        mimetype="text/event-stream"
-    )
+    except Exception as e:
+        logger.exception("Erro no stream endpoint")
+        return jsonify({
+            "error": str(e)
+        }), 500

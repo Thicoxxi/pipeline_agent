@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 
 # =========================================================
-# LOAD ENV
+# BASE DIR
 # =========================================================
 BASE_DIR = os.path.dirname(
     os.path.dirname(
@@ -11,6 +11,9 @@ BASE_DIR = os.path.dirname(
     )
 )
 
+# =========================================================
+# ENV
+# =========================================================
 ENV_FILE = os.path.join(
     BASE_DIR,
     ".env"
@@ -40,7 +43,7 @@ class Config:
     ).strip()
 
     # =====================================================
-    # GITHUB
+    # SCM
     # =====================================================
     GITHUB_TOKEN = os.getenv(
         "GITHUB_TOKEN",
@@ -52,9 +55,6 @@ class Config:
         "https://api.github.com"
     ).strip()
 
-    # =====================================================
-    # GITLAB
-    # =====================================================
     GITLAB_TOKEN = os.getenv(
         "GITLAB_TOKEN",
         ""
@@ -66,7 +66,7 @@ class Config:
     ).strip()
 
     # =====================================================
-    # PROVIDERS
+    # OPENAI
     # =====================================================
     @classmethod
     def has_openai(cls):
@@ -76,12 +76,28 @@ class Config:
         )
 
     @classmethod
+    def openai_key(cls):
+
+        return cls.OPENAI_API_KEY
+
+    # =====================================================
+    # GROQ
+    # =====================================================
+    @classmethod
     def has_groq(cls):
 
         return bool(
             cls.GROQ_API_KEY
         )
 
+    @classmethod
+    def groq_key(cls):
+
+        return cls.GROQ_API_KEY
+
+    # =====================================================
+    # GITHUB
+    # =====================================================
     @classmethod
     def has_github(cls):
 
@@ -90,11 +106,48 @@ class Config:
         )
 
     @classmethod
+    def github_token(cls):
+
+        return cls.GITHUB_TOKEN
+
+    @classmethod
+    def github_url(cls):
+
+        return cls.GITHUB_URL
+
+    # =====================================================
+    # GITLAB
+    # =====================================================
+    @classmethod
     def has_gitlab(cls):
 
         return bool(
             cls.GITLAB_TOKEN
         )
+
+    @classmethod
+    def gitlab_token(cls):
+
+        return cls.GITLAB_TOKEN
+
+    @classmethod
+    def gitlab_url(cls):
+
+        return cls.GITLAB_URL
+
+    # =====================================================
+    # DEFAULT PROVIDER
+    # =====================================================
+    @classmethod
+    def default_provider(cls):
+
+        if cls.has_groq():
+            return "groq"
+
+        if cls.has_openai():
+            return "openai"
+
+        return "local"
 
     # =====================================================
     # VALIDATE
@@ -103,12 +156,12 @@ class Config:
     def validate(cls):
 
         if not (
-            cls.has_openai()
-            or cls.has_groq()
+            cls.has_groq()
+            or cls.has_openai()
         ):
 
-            raise Exception(
-                "Nenhum provider configurado"
+            print(
+                "[WARNING] Nenhum provider LLM configurado"
             )
 
     # =====================================================
@@ -118,8 +171,24 @@ class Config:
     def summary(cls):
 
         return {
-            "openai": cls.has_openai(),
-            "groq": cls.has_groq(),
-            "github": cls.has_github(),
-            "gitlab": cls.has_gitlab()
+
+            "openai":
+                "OK"
+                if cls.has_openai()
+                else "MISSING",
+
+            "groq":
+                "OK"
+                if cls.has_groq()
+                else "MISSING",
+
+            "github":
+                "OK"
+                if cls.has_github()
+                else "MISSING",
+
+            "gitlab":
+                "OK"
+                if cls.has_gitlab()
+                else "MISSING",
         }

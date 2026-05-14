@@ -62,7 +62,7 @@ class OpenAIProvider(BaseProvider):
     def __init__(self):
 
         self.client = OpenAI(
-            api_key=Config.openai_key()
+            api_key=Config.OPENAI_API_KEY
         )
 
         self.model = "gpt-4o-mini"
@@ -110,5 +110,4 @@ class OpenAIProvider(BaseProvider):
             )
 
             if delta:
-
-                yield delta, "openai"
+                yield delta
