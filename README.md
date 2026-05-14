@@ -8,6 +8,10 @@ Aplicação web para geração automática de pipelines CI/CD utilizando IA, com
 - Groq
 - Templates locais
 - Publicação automática em repositórios
+- Analyzer inteligente de projetos
+- VSCode Agents (Python e Node.js)
+- Streaming SSE
+- Logging centralizado
 
 ---
 
@@ -20,7 +24,8 @@ A aplicação utiliza modelos LLM para gerar pipelines profissionais automaticam
 Exemplos:
 
 - Pipeline Python com pytest
-- Pipeline .NET 9
+- Pipeline Flask + Frontend JS
+- Pipeline .NET 8/9
 - Pipeline Terraform
 - Pipeline Java Maven
 - Pipeline Docker
@@ -29,16 +34,29 @@ Exemplos:
 
 ---
 
-## 🔄 Providers Suportados
+## 🔍 Analyzer Inteligente de Projetos
 
-A aplicação possui suporte para múltiplos providers:
+O projeto agora possui um analyzer inteligente capaz de:
+
+- Detectar automaticamente stacks do projeto
+- Identificar backend/frontend
+- Detectar Flask, FastAPI, Django
+- Detectar React, Vue, Next.js
+- Detectar Docker, Terraform e Kubernetes
+- Gerar pipeline real baseado no projeto inteiro
+- Detectar testes e dependências
+- Evitar falsos positivos de stacks
+
+---
+
+## 🔄 Providers Suportados
 
 | Provider | Descrição |
 |---|---|
-| OpenAI | Utiliza GPT-4o-mini |
-| Groq | Utiliza llama-3.3-70b-versatile |
-| Local | Utiliza templates Jinja locais |
-| Auto | Faz fallback automático entre providers |
+| OpenAI | GPT-4o-mini |
+| Groq | llama-3.3-70b-versatile |
+| Local | Templates Jinja2 |
+| Auto | Fallback automático |
 
 ---
 
@@ -51,19 +69,29 @@ Tecnologias utilizadas:
 - Python
 - Flask
 - OpenAI SDK
+- Groq SDK
+- Requests
 - Jinja2
 - PyYAML
-- Requests
+- Logging Rotativo
 
-Principais arquivos:
+### Estrutura Backend
 
-| Arquivo | Responsabilidade |
-|---|---|
-| `app.py` | API Flask principal |
-| `llm_agent.py` | Integração com IA |
-| `config.py` | Configurações e variáveis |
-| `gitlab_client.py` | Integração GitLab |
-| `github_client.py` | Integração GitHub |
+```text
+backend/
+├── api/
+│   └── routes/
+├── core/
+├── providers/
+│   ├── llm/
+│   └── scm/
+├── services/
+├── static/
+├── templates/
+├── tools/
+├── logs/
+└── app.py
+```
 
 ---
 
@@ -74,28 +102,93 @@ Tecnologias:
 - HTML5
 - CSS3
 - JavaScript Vanilla
+- SSE Streaming
 
-Principais arquivos:
+### Recursos Frontend
 
-| Arquivo | Responsabilidade |
-|---|---|
-| `index.html` | Estrutura principal |
-| `chat.css` | Interface visual |
-| `chat.js` | Lógica frontend |
+- Layout moderno DevOps
+- Separação GitLab/GitHub
+- Streaming em tempo real
+- Editor YAML
+- Conversão GitLab → GitHub
+- Download de pipelines
+- Aplicação automática em repositórios
 
 ---
 
-# 🎨 Interface
+# 🔌 VSCode Agents
 
-A aplicação possui:
+O projeto agora possui agents para terminal/VSCode.
 
-- Layout moderno estilo DevOps Dashboard
-- Separação visual GitLab/GitHub
-- Editor YAML integrado
-- Validação automática YAML
-- Conversão GitLab → GitHub Actions
-- Download dos pipelines
-- Aplicação automática nos repositórios
+## Python Agent
+
+Arquivo:
+
+```text
+tools/vscode_agent.py
+```
+
+Recursos:
+
+- análise automática de projeto
+- integração com analyzer
+- logs próprios
+- suporte GitLab/GitHub
+- comunicação SSE
+
+---
+
+## Node.js Agent
+
+Arquivo:
+
+```text
+tools/vscode_agent.js
+```
+
+Recursos:
+
+- streaming em tempo real
+- integração GitHub
+- logs automáticos
+- suporte analyze/chat/github
+
+---
+
+# 🛠️ Logging
+
+O sistema possui logging centralizado.
+
+## Logs Backend
+
+```text
+logs/app.log
+```
+
+## Logs Agents
+
+```text
+logs/vscode_agent.log
+logs/vscode_agent_js.log
+```
+
+Recursos:
+
+- RotatingFileHandler
+- Request ID
+- Logs estruturados
+- Rastreamento de erros
+
+---
+
+# 🌊 Streaming SSE
+
+O backend utiliza Server Sent Events (SSE) para:
+
+- streaming em tempo real
+- respostas incrementais
+- atualização dinâmica do frontend
+- compatibilidade com frontend e VSCode agents
 
 ---
 
@@ -104,25 +197,18 @@ A aplicação possui:
 ```text
 project/
 │
-├── app/
-│   ├── app.py
-│   ├── llm_agent.py
-│   ├── config.py
-│   ├── gitlab_client.py
-│   └── github_client.py
-│
-├── templates/
-│   ├── index.html
-│   └── pipelines/
-│
+├── api/
+├── core/
+├── providers/
+├── services/
 ├── static/
-│   ├── chat.css
-│   └── chat.js
-│
+├── templates/
+├── tools/
 ├── logs/
 │
-├── .env
+├── app.py
 ├── requirements.txt
+├── .env
 └── README.md
 ```
 
@@ -169,13 +255,12 @@ OPENAI_API_KEY=your_openai_key
 # GROQ
 GROQ_API_KEY=your_groq_key
 
+# GITHUB
+GITHUB_TOKEN=your_github_token
+
 # GITLAB
 GITLAB_TOKEN=your_gitlab_token
 GITLAB_URL=https://gitlab.com/api/v4
-
-# GITHUB
-GITHUB_TOKEN=your_github_token
-GITHUB_API_URL=https://api.github.com
 ```
 
 ---
@@ -196,7 +281,7 @@ http://localhost:5000
 
 # 🔌 Endpoints
 
-## Stream de geração
+## Stream
 
 ```http
 POST /api/stream
@@ -206,46 +291,43 @@ Body:
 
 ```json
 {
-  "prompt": "pipeline python pytest docker",
+  "prompt": "pipeline flask docker",
   "provider": "auto"
 }
 ```
 
 ---
 
-## Aplicar pipeline GitLab
+## Analyze Project
 
 ```http
-POST /api/gitlab/apply
+POST /api/analyze-project
 ```
 
 Body:
 
 ```json
 {
-  "project_id": "123",
-  "branch": "main",
-  "yaml": "stages: ..."
+  "platform": "gitlab",
+  "provider": "auto",
+  "files": []
 }
 ```
 
 ---
 
-## Aplicar workflow GitHub
+## GitHub Apply
 
 ```http
 POST /api/github/apply
 ```
 
-Body:
+---
 
-```json
-{
-  "owner": "usuario",
-  "repo": "repositorio",
-  "branch": "main",
-  "yaml": "name: CI"
-}
+## GitLab Apply
+
+```http
+POST /api/gitlab/apply
 ```
 
 ---
@@ -255,35 +337,43 @@ Body:
 ## Fluxo da aplicação
 
 1. Usuário envia prompt
-2. Backend escolhe provider
-3. LLM gera pipeline YAML
+2. Backend seleciona provider
+3. LLM gera pipeline
 4. YAML é validado
-5. Frontend exibe GitLab e GitHub
-6. Usuário pode:
-   - editar
-   - baixar
-   - publicar
+5. Frontend recebe SSE
+6. Usuário pode editar/publicar
 
 ---
 
-# 🛡️ Validações
+## Fluxo do Analyzer
 
-A aplicação valida:
+1. Scanner detecta arquivos
+2. Sistema detecta stacks
+3. Projeto é resumido
+4. LLM analisa contexto completo
+5. Pipeline profissional é gerado
 
-- YAML válido
-- Campos obrigatórios
-- Providers configurados
-- Tokens de integração
+---
+
+# 🛡️ Melhorias Técnicas
+
+- limpeza automática de JSON residual
+- remoção de markdown inválido
+- suporte SSE e RAW mode
+- parser robusto
+- fallback automático
+- logs estruturados
+- detecção inteligente de stacks
 
 ---
 
 # 🔄 Fallback Inteligente
 
-No modo `auto`:
+Modo `auto`:
 
-1. Tenta Groq
-2. Se falhar → OpenAI
-3. Se falhar → Template Local
+1. Groq
+2. OpenAI
+3. Template Local
 
 ---
 
@@ -291,11 +381,11 @@ No modo `auto`:
 
 Templates disponíveis:
 
+- Python
+- Java
+- Terraform
 - .NET 8
 - .NET 9
-- Java
-- Python
-- Terraform
 
 Renderizados via Jinja2.
 
@@ -303,24 +393,18 @@ Renderizados via Jinja2.
 
 # 🚀 Melhorias Futuras
 
-Sugestões para evolução:
-
 - Monaco Editor
-- Syntax Highlight
 - Histórico de pipelines
-- Login OAuth GitHub/GitLab
-- Deploy Docker
-- Kubernetes deployment
-- Multi-workflow support
-- Dark/Light Theme
+- OAuth GitHub/GitLab
+- Docker deploy
+- Kubernetes deploy
+- Marketplace de templates
+- Multi-workflow
 - Banco de dados
-- Pipeline templates marketplace
 
 ---
 
 # 🐳 Docker
-
-Exemplo de Dockerfile:
 
 ```dockerfile
 FROM python:3.12
@@ -338,15 +422,16 @@ CMD ["python", "app.py"]
 
 ---
 
-# 📋 Dependências Recomendadas
+# 📋 Dependências
 
 ```txt
 flask
 openai
-python-dotenv
-pyyaml
-jinja2
+groq
 requests
+jinja2
+pyyaml
+python-dotenv
 ```
 
 ---
@@ -355,29 +440,19 @@ requests
 
 ## Backend
 
-- Streaming SSE
-- Logging rotativo
+- SSE Streaming
 - Fallback inteligente
-- Validação YAML
+- Logging avançado
+- Analyzer inteligente
 - Integração REST APIs
 
 ## Frontend
 
 - Interface responsiva
-- Conversão automática GitHub
-- Validação client-side
-- Download de arquivos
-- Atualização dinâmica
-
----
-
-# 📝 Observações
-
-- O projeto já possui arquitetura muito bem organizada.
-- O frontend está moderno e bem estruturado.
-- A separação GitLab/GitHub ficou excelente.
-- O fallback entre providers está muito bom.
-- O uso de templates locais aumenta a resiliência.
+- Atualização em tempo real
+- Conversão GitHub
+- Download YAML
+- Separação visual GitLab/GitHub
 
 ---
 

@@ -12,9 +12,6 @@ class ProjectAnalyzerService:
 
         summary = []
 
-        # =====================================================
-        # BUILD PROJECT CONTEXT
-        # =====================================================
         for file in files:
 
             name = file.get("name")
@@ -39,68 +36,48 @@ class ProjectAnalyzerService:
 
         joined = "\n".join(summary)
 
-        # =====================================================
-        # PROMPT
-        # =====================================================
         prompt = f"""
 Você é um arquiteto DevOps SRE especialista em CI/CD.
 
-Sua tarefa é analisar COMPLETAMENTE um projeto real
-e gerar um pipeline profissional para {platform}.
+Analise COMPLETAMENTE o projeto abaixo.
 
-ANÁLISE O PROJETO COMO UM TODO.
+Detecte corretamente:
 
-Detecte automaticamente:
-
-- backend
-- frontend
+- backend principal
+- frontend web
 - framework principal
 - linguagem principal
+- dependências
 - testes
 - docker
-- terraform
 - kubernetes
+- terraform
 - build tools
 - package managers
-- dependências
 
-EXEMPLOS:
-- Flask
-- FastAPI
-- Django
-- React
-- Vue
-- Next.js
-- Node.js
-- Java
-- Maven
-- Gradle
-- .NET
-- Terraform
-- Docker
+IMPORTANTE:
 
-REGRAS OBRIGATÓRIAS:
+- HTML/CSS/JS em /static ou /templates NÃO significa Node.js
+- só considere Node.js se existir package.json
+- Flask usa frontend estático frequentemente
+- detectar corretamente projetos Flask
+- detectar corretamente frontend web simples
+
+REGRAS:
 
 - retornar SOMENTE YAML
 - NÃO retornar JSON
 - NÃO retornar markdown
 - NÃO usar ```
 - NÃO explicar nada
-- NÃO adicionar comentários fora do YAML
 - gerar pipeline REAL baseado nos arquivos
 - usar boas práticas CI/CD
-- usar cache quando apropriado
-- usar install/test/build/deploy
-- detectar corretamente o tipo do projeto
 
 PROJETO:
 
 {joined}
 """
 
-        # =====================================================
-        # STREAM RESULT
-        # =====================================================
         chunks = []
 
         for chunk in StreamService.generate(
@@ -116,9 +93,6 @@ PROJETO:
 
         result = "".join(chunks).strip()
 
-        # =====================================================
-        # CLEAN MARKDOWN
-        # =====================================================
         result = result.replace(
             "```yaml",
             ""
@@ -134,48 +108,4 @@ PROJETO:
             ""
         )
 
-        # =====================================================
-        # CLEAN JSON RESPONSE
-        # =====================================================
-        if result.startswith("{"):
-
-            # remove wrapper json
-            if '"gitlab":' in result:
-
-                result = result.split(
-                    '"gitlab":',
-                    1
-                )[1]
-
-            elif '"github":' in result:
-
-                result = result.split(
-                    '"github":',
-                    1
-                )[1]
-
-            result = result.strip()
-
-            # remove aspas iniciais
-            if result.startswith('"'):
-                result = result[1:]
-
-            # remove fechamento
-            if result.endswith('"}'):
-                result = result[:-2]
-
-            # decode \n
-            result = result.encode().decode(
-                "unicode_escape"
-            )
-
-        # =====================================================
-        # FINAL CLEAN
-        # =====================================================
-        result = result.strip()
-
-        # remove lixo comum
-        if result.startswith("yaml"):
-            result = result[4:].strip()
-
-        return result
+        return result.strip()

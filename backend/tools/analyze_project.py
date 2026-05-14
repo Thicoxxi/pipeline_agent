@@ -1,6 +1,5 @@
 from pathlib import Path
 import json
-
 import requests
 
 # =========================================================
@@ -35,184 +34,49 @@ IGNORE_DIRS = {
     ".vscode",
     "coverage",
     "bin",
-    "obj"
-}
-
-# =========================================================
-# FILE RULES
-# =========================================================
-STACK_RULES = {
-
-    # =====================================================
-    # PYTHON
-    # =====================================================
-    "python": {
-
-        "files": {
-            "requirements.txt",
-            "requirements-dev.txt",
-            "requirements-prod.txt",
-            "pyproject.toml",
-            "poetry.lock",
-            "pytest.ini",
-            "Pipfile",
-            "manage.py",
-            "app.py",
-            "main.py",
-            "wsgi.py"
-        },
-
-        "extensions": {
-            ".py"
-        },
-
-        "important_dirs": {
-            "services",
-            "providers",
-            "api",
-            "core",
-            "tests"
-        }
-    },
-
-    # =====================================================
-    # NODE
-    # =====================================================
-    "node": {
-
-        "files": {
-            "package.json",
-            "package-lock.json",
-            "yarn.lock",
-            "tsconfig.json",
-            "vite.config.js",
-            "next.config.js"
-        },
-
-        "extensions": {
-            ".js",
-            ".ts"
-        },
-
-        "important_dirs": {
-            "src",
-            "pages",
-            "components",
-            "server",
-            "api"
-        }
-    },
-
-    # =====================================================
-    # JAVA
-    # =====================================================
-    "java": {
-
-        "files": {
-            "pom.xml",
-            "build.gradle",
-            "gradlew"
-        },
-
-        "extensions": {
-            ".java"
-        },
-
-        "important_dirs": {
-            "src"
-        }
-    },
-
-    # =====================================================
-    # DOTNET
-    # =====================================================
-    "dotnet": {
-
-        "files": {
-            "*.csproj",
-            "*.sln",
-            "NuGet.config"
-        },
-
-        "extensions": {
-            ".cs"
-        },
-
-        "important_dirs": {
-            "Controllers",
-            "Services",
-            "Models"
-        }
-    },
-
-    # =====================================================
-    # DOCKER
-    # =====================================================
-    "docker": {
-
-        "files": {
-            "Dockerfile",
-            "docker-compose.yml",
-            "docker-compose.yaml"
-        },
-
-        "extensions": set(),
-
-        "important_dirs": set()
-    },
-
-    # =====================================================
-    # TERRAFORM
-    # =====================================================
-    "terraform": {
-
-        "files": {
-            "main.tf",
-            "variables.tf",
-            "outputs.tf"
-        },
-
-        "extensions": {
-            ".tf"
-        },
-
-        "important_dirs": {
-            "terraform"
-        }
-    },
-
-    # =====================================================
-    # KUBERNETES
-    # =====================================================
-    "kubernetes": {
-
-        "files": {
-            "deployment.yml",
-            "deployment.yaml",
-            "service.yml",
-            "service.yaml",
-            "ingress.yml",
-            "ingress.yaml"
-        },
-
-        "extensions": {
-            ".yaml",
-            ".yml"
-        },
-
-        "important_dirs": {
-            "k8s",
-            "kubernetes"
-        }
-    }
+    "obj",
+    "logs"
 }
 
 # =========================================================
 # LIMITS
 # =========================================================
-MAX_FILES = 25
+MAX_FILES = 30
 MAX_FILE_SIZE = 4000
 
+# =========================================================
+# IMPORTANT FILES
+# =========================================================
+IMPORTANT_FILES = {
+    # python
+    "requirements.txt",
+    "pyproject.toml",
+    "poetry.lock",
+    "Pipfile",
+    "pytest.ini",
+
+    # node
+    "package.json",
+
+    # java
+    "pom.xml",
+    "build.gradle",
+
+    # dotnet
+    "*.csproj",
+    "*.sln",
+
+    # docker
+    "Dockerfile",
+    "docker-compose.yml",
+
+    # terraform
+    "main.tf",
+
+    # kubernetes
+    "deployment.yml",
+    "deployment.yaml",
+}
 
 # =========================================================
 # IGNORE CHECK
@@ -224,48 +88,108 @@ def should_ignore(path: Path):
         for ignored in IGNORE_DIRS
     )
 
-
 # =========================================================
-# STACK MATCHER
+# STACK DETECTION
 # =========================================================
-def match_stack(path: Path):
+def detect_stack(path: Path):
 
-    for stack, rules in STACK_RULES.items():
+    # =====================================================
+    # PYTHON
+    # =====================================================
+    if path.suffix == ".py":
+        return "python"
 
-        # =================================================
-        # EXACT FILES
-        # =================================================
-        if path.name in rules["files"]:
-            return stack
+    if path.name in {
+        "requirements.txt",
+        "pyproject.toml",
+        "poetry.lock",
+        "Pipfile"
+    }:
+        return "python"
 
-        # =================================================
-        # WILDCARDS
-        # =================================================
-        if "*.csproj" in rules["files"]:
-            if path.name.endswith(".csproj"):
-                return stack
+    # =====================================================
+    # FRONTEND WEB
+    # =====================================================
+    if path.suffix in {
+        ".html",
+        ".css",
+        ".js"
+    }:
 
-        if "*.sln" in rules["files"]:
-            if path.name.endswith(".sln"):
-                return stack
+        if "static" in path.parts:
+            return "frontend"
 
-        # =================================================
-        # EXTENSIONS
-        # =================================================
-        if path.suffix in rules["extensions"]:
-            return stack
+        if "templates" in path.parts:
+            return "frontend"
 
-        # =================================================
-        # IMPORTANT DIRS
-        # =================================================
-        if any(
-            directory in path.parts
-            for directory in rules["important_dirs"]
-        ):
-            return stack
+    # =====================================================
+    # NODE
+    # =====================================================
+    if path.name == "package.json":
+        return "node"
+
+    # =====================================================
+    # JAVA
+    # =====================================================
+    if path.name in {
+        "pom.xml",
+        "build.gradle"
+    }:
+        return "java"
+
+    # =====================================================
+    # DOTNET
+    # =====================================================
+    if path.name.endswith(".csproj"):
+        return "dotnet"
+
+    if path.name.endswith(".sln"):
+        return "dotnet"
+
+    # =====================================================
+    # DOCKER
+    # =====================================================
+    if path.name == "Dockerfile":
+        return "docker"
+
+    if path.name in {
+        "docker-compose.yml",
+        "docker-compose.yaml"
+    }:
+        return "docker"
+
+    # =====================================================
+    # TERRAFORM
+    # =====================================================
+    if path.name == "main.tf":
+        return "terraform"
+
+    # =====================================================
+    # KUBERNETES
+    # =====================================================
+    if path.name in {
+        "deployment.yml",
+        "deployment.yaml"
+    }:
+        return "kubernetes"
 
     return None
 
+# =========================================================
+# FILE PRIORITY
+# =========================================================
+def is_important_file(path: Path):
+
+    if path.name in IMPORTANT_FILES:
+        return True
+
+    if path.name.endswith(".csproj"):
+        return True
+
+    if path.name.endswith(".sln"):
+        return True
+
+    return False
 
 # =========================================================
 # SCAN PROJECT
@@ -280,33 +204,18 @@ def scan_project():
 
     for path in BASE_DIR.rglob("*"):
 
-        # =================================================
-        # FILE ONLY
-        # =================================================
         if not path.is_file():
             continue
 
-        # =================================================
-        # IGNORE
-        # =================================================
         if should_ignore(path):
             continue
 
-        # =================================================
-        # STACK DETECTION
-        # =================================================
-        stack = match_stack(path)
+        stack = detect_stack(path)
 
         if not stack:
             continue
 
         detected_stacks.add(stack)
-
-        # =================================================
-        # FILE LIMIT
-        # =================================================
-        if len(files) >= MAX_FILES:
-            continue
 
         try:
 
@@ -323,13 +232,17 @@ def scan_project():
                 errors="ignore"
             )
 
+            # prioridade maior para arquivos importantes
+            max_size = (
+                8000
+                if is_important_file(path)
+                else MAX_FILE_SIZE
+            )
+
             files.append({
-
                 "name": relative_path,
-
                 "stack": stack,
-
-                "content": content[:MAX_FILE_SIZE]
+                "content": content[:max_size]
             })
 
         except Exception as e:
@@ -338,8 +251,7 @@ def scan_project():
                 f"❌ failed reading {path}: {e}"
             )
 
-    return files, detected_stacks
-
+    return files[:MAX_FILES], detected_stacks
 
 # =========================================================
 # EXTRACT PIPELINE
@@ -348,22 +260,12 @@ def extract_pipeline(response):
 
     raw = response.text.strip()
 
-    # =====================================================
-    # DEBUG
-    # =====================================================
     print("\n[DEBUG] raw backend response:\n")
     print(raw)
 
-    # =====================================================
-    # REMOVE SSE PREFIX
-    # =====================================================
     if raw.startswith("data:"):
+        raw = raw.replace("data:", "").strip()
 
-        raw = raw[len("data:"):].strip()
-
-    # =====================================================
-    # TRY JSON
-    # =====================================================
     try:
 
         data = json.loads(raw)
@@ -377,12 +279,8 @@ def extract_pipeline(response):
 
     except Exception:
 
-        # fallback texto puro
         pipeline = raw
 
-    # =====================================================
-    # CLEAN MARKDOWN
-    # =====================================================
     pipeline = pipeline.replace(
         "```yaml",
         ""
@@ -400,43 +298,24 @@ def extract_pipeline(response):
 
     return pipeline.strip()
 
-
 # =========================================================
 # ANALYZE PROJECT
 # =========================================================
-def analyze_project(
-    platform="gitlab"
-):
+def analyze_project(platform="gitlab"):
 
     files, stacks = scan_project()
 
-    # =====================================================
-    # NO FILES
-    # =====================================================
     if not files:
 
-        print(
-            "\n❌ no supported files found\n"
-        )
-
+        print("\n❌ no supported files found\n")
         return
 
-    # =====================================================
-    # STACK SUMMARY
-    # =====================================================
-    print(
-        "\n🧠 detected stacks:\n"
-    )
+    print("\n🧠 detected stacks:\n")
 
     for stack in sorted(stacks):
+        print(f" - {stack}")
 
-        print(
-            f" - {stack}"
-        )
-
-    print(
-        "\n🚀 sending files to analyzer...\n"
-    )
+    print("\n🚀 sending files to analyzer...\n")
 
     try:
 
@@ -445,73 +324,36 @@ def analyze_project(
             f"{API_URL}/api/analyze-project",
 
             json={
-
                 "files": files,
-
                 "platform": platform,
-
                 "detected_stacks": list(stacks),
-
                 "provider": "auto"
             },
 
             timeout=180
         )
 
-        # =================================================
-        # PIPELINE EXTRACTION
-        # =================================================
         pipeline = extract_pipeline(response)
 
-        # =================================================
-        # ERROR
-        # =================================================
         if not pipeline:
 
-            print(
-                "\n❌ analyzer error:\n"
-            )
-
-            print(
-                response.text
-            )
-
+            print("\n❌ analyzer error:\n")
+            print(response.text)
             return
 
-        # =================================================
-        # SUCCESS
-        # =================================================
-        print(
-            "\n================================================="
-        )
+        print("\n=================================================")
+        print(f" GENERATED {platform.upper()} PIPELINE ")
+        print("=================================================\n")
 
-        print(
-            f" GENERATED {platform.upper()} PIPELINE "
-        )
+        print(pipeline)
 
-        print(
-            "=================================================\n"
-        )
-
-        print(
-            pipeline
-        )
-
-        # =================================================
-        # OUTPUT FILE
-        # =================================================
         output_file = (
-
             ".gitlab-ci.yml"
-
             if platform == "gitlab"
-
             else ".github/workflows/pipeline.yml"
         )
 
-        output_path = (
-            BASE_DIR / output_file
-        )
+        output_path = BASE_DIR / output_file
 
         output_path.parent.mkdir(
             parents=True,
@@ -529,10 +371,7 @@ def analyze_project(
 
     except Exception as e:
 
-        print(
-            f"\n❌ request error: {e}\n"
-        )
-
+        print(f"\n❌ request error: {e}\n")
 
 # =========================================================
 # DIRECT EXECUTION
@@ -548,9 +387,7 @@ if __name__ == "__main__":
         "github"
     ]:
 
-        print(
-            "\n❌ invalid platform\n"
-        )
+        print("\n❌ invalid platform\n")
 
     else:
 

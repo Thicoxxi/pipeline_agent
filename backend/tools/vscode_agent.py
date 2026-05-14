@@ -1,8 +1,64 @@
+from pathlib import Path
+from datetime import datetime
+import logging
 import requests
 
 from analyze_project import analyze_project
 
+# =========================================================
+# CONFIG
+# =========================================================
 API_URL = "http://localhost:5000"
+
+# =========================================================
+# LOGS
+# =========================================================
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+LOG_DIR = BASE_DIR / "logs"
+
+LOG_DIR.mkdir(
+    exist_ok=True
+)
+
+LOG_FILE = LOG_DIR / "vscode_agent_py.log"
+
+logging.basicConfig(
+    level=logging.INFO,
+    format=(
+        "%(asctime)s "
+        "[%(levelname)s] "
+        "%(message)s"
+    ),
+    handlers=[
+        logging.FileHandler(
+            LOG_FILE,
+            encoding="utf-8"
+        ),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(
+    "vscode_agent_py"
+)
+
+# =========================================================
+# HELPERS
+# =========================================================
+def separator():
+
+    print(
+        "\n" + "=" * 60 + "\n"
+    )
+
+
+def log_command(command):
+
+    logger.info(
+        "COMMAND | %s",
+        command
+    )
 
 
 # =========================================================
@@ -17,10 +73,19 @@ def chat():
     if not prompt:
 
         print(
-            "❌ Prompt vazio"
+            "\n❌ empty prompt\n"
         )
 
         return
+
+    logger.info(
+        "CHAT START"
+    )
+
+    logger.info(
+        "PROMPT | %s",
+        prompt
+    )
 
     try:
 
@@ -33,99 +98,62 @@ def chat():
                 "provider": "auto"
             },
 
-            timeout=120
+            stream=True,
+            timeout=180
         )
+
+        separator()
 
         print(
-            "\n🤖 RESPONSE\n"
+            "🤖 RESPONSE:\n"
         )
 
-        print(
-            response.text
-        )
+        final_text = []
 
-    except Exception as e:
+        for line in response.iter_lines():
 
-        print(
-            f"\n❌ Chat error: {e}"
-        )
+            if not line:
+                continue
 
+            decoded = line.decode()
 
-# =========================================================
-# APPLY GITHUB
-# =========================================================
-def github_apply():
-
-    owner = input(
-        "\n👤 Owner: "
-    ).strip()
-
-    repo = input(
-        "📦 Repo: "
-    ).strip()
-
-    branch = input(
-        "🌿 Branch (default main): "
-    ).strip() or "main"
-
-    print(
-        "\n📄 Paste YAML "
-        "(finish with CTRL+D):\n"
-    )
-
-    yaml_lines = []
-
-    try:
-
-        while True:
-
-            yaml_lines.append(
-                input()
+            logger.info(
+                "RAW SSE | %s",
+                decoded
             )
 
-    except EOFError:
-        pass
+            if decoded.startswith("data:"):
 
-    yaml_content = "\n".join(
-        yaml_lines
-    )
+                decoded = decoded.replace(
+                    "data:",
+                    ""
+                ).strip()
 
-    if not yaml_content.strip():
+            if not decoded:
+                continue
 
-        print(
-            "❌ YAML vazio"
+            print(
+                decoded,
+                end="",
+                flush=True
+            )
+
+            final_text.append(decoded)
+
+        logger.info(
+            "CHAT END"
         )
 
-        return
-
-    try:
-
-        response = requests.post(
-
-            f"{API_URL}/api/github/apply",
-
-            json={
-                "owner": owner,
-                "repo": repo,
-                "branch": branch,
-                "yaml": yaml_content
-            },
-
-            timeout=120
-        )
-
-        print(
-            "\n🚀 GITHUB RESULT\n"
-        )
-
-        print(
-            response.json()
-        )
+        separator()
 
     except Exception as e:
 
+        logger.exception(
+            "CHAT ERROR"
+        )
+
         print(
-            f"\n❌ GitHub apply error: {e}"
+            f"\n❌ error: {e}\n"
         )
 
 
@@ -139,107 +167,180 @@ def analyze():
     ).strip().lower()
 
     if platform not in [
-
         "gitlab",
         "github"
-
     ]:
 
         print(
-            "❌ Plataforma inválida"
+            "\n❌ invalid platform\n"
         )
 
         return
 
-    analyze_project(platform)
-
-
-# =========================================================
-# HELP
-# =========================================================
-def help_menu():
-
-    print(
-        """
-=================================================
-🤖 VSCode DevOps Agent
-=================================================
-
-Comandos disponíveis:
-
-1. chat
-   -> conversa com o LLM
-
-2. github
-   -> aplica workflow GitHub Actions
-
-3. analyze
-   -> analisa projeto e gera pipeline
-
-4. exit
-   -> sair
-
-=================================================
-"""
+    logger.info(
+        "ANALYZE START | platform=%s",
+        platform
     )
 
+    try:
+
+        analyze_project(
+            platform
+        )
+
+        logger.info(
+            "ANALYZE END"
+        )
+
+    except Exception:
+
+        logger.exception(
+            "ANALYZE ERROR"
+        )
+
 
 # =========================================================
-# MAIN LOOP
+# GITHUB APPLY
+# =========================================================
+def github_apply():
+
+    owner = input(
+        "\nOwner: "
+    ).strip()
+
+    repo = input(
+        "Repo: "
+    ).strip()
+
+    yaml_path = input(
+        "YAML file path: "
+    ).strip()
+
+    file_path = Path(
+        yaml_path
+    )
+
+    if not file_path.exists():
+
+        print(
+            "\n❌ file not found\n"
+        )
+
+        return
+
+    yaml_content = file_path.read_text(
+        encoding="utf-8"
+    )
+
+    logger.info(
+        "GITHUB APPLY | owner=%s repo=%s file=%s",
+        owner,
+        repo,
+        yaml_path
+    )
+
+    try:
+
+        response = requests.post(
+
+            f"{API_URL}/api/github/apply",
+
+            json={
+                "owner": owner,
+                "repo": repo,
+                "branch": "main",
+                "yaml": yaml_content
+            },
+
+            timeout=180
+        )
+
+        data = response.json()
+
+        separator()
+
+        print(
+            "🚀 RESULT:\n"
+        )
+
+        print(data)
+
+        separator()
+
+        logger.info(
+            "GITHUB RESPONSE | %s",
+            data
+        )
+
+    except Exception:
+
+        logger.exception(
+            "GITHUB APPLY ERROR"
+        )
+
+
+# =========================================================
+# MENU
 # =========================================================
 def main():
 
+    separator()
+
     print(
-        "\n🤖 VSCode DevOps Agent Started\n"
+        "🤖 VSCode Agent (Python)"
     )
+
+    print(
+        f"📝 log file: {LOG_FILE}"
+    )
+
+    separator()
 
     while True:
 
-        help_menu()
+        print(
+            "Available commands:\n"
+        )
+
+        print(" - chat")
+        print(" - analyze")
+        print(" - github")
+        print(" - exit")
 
         command = input(
             "\nCommand: "
         ).strip().lower()
 
-        # =================================================
-        # EXIT
-        # =================================================
-        if command == "exit":
+        log_command(command)
 
-            print(
-                "\n👋 Bye\n"
-            )
-
-            break
-
-        # =================================================
-        # CHAT
-        # =================================================
-        elif command == "chat":
+        if command == "chat":
 
             chat()
 
-        # =================================================
-        # GITHUB
-        # =================================================
-        elif command == "github":
-
-            github_apply()
-
-        # =================================================
-        # ANALYZE
-        # =================================================
         elif command == "analyze":
 
             analyze()
 
-        # =================================================
-        # UNKNOWN
-        # =================================================
+        elif command == "github":
+
+            github_apply()
+
+        elif command == "exit":
+
+            logger.info(
+                "APPLICATION CLOSED"
+            )
+
+            print(
+                "\n👋 bye\n"
+            )
+
+            break
+
         else:
 
             print(
-                "\n❌ Unknown command\n"
+                "\n❌ invalid command\n"
             )
 
 
@@ -247,5 +348,17 @@ def main():
 # START
 # =========================================================
 if __name__ == "__main__":
+
+    logger.info(
+        "=" * 60
+    )
+
+    logger.info(
+        "VSCODE AGENT PY STARTED"
+    )
+
+    logger.info(
+        "=" * 60
+    )
 
     main()
