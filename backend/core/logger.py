@@ -1,9 +1,37 @@
 import logging
 import os
+import uuid
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+import contextvars
+
+# =========================================================
+# CONTEXT (REQUEST ID GLOBAL)
+# =========================================================
+request_id_ctx = contextvars.ContextVar("request_id", default="-")
 
 
+def set_request_id(value: str | None = None):
+    request_id_ctx.set(value or str(uuid.uuid4())[:8])
+
+
+def get_request_id():
+    return request_id_ctx.get()
+
+
+# =========================================================
+# FORMATTER CUSTOM (com request_id)
+# =========================================================
+class ContextFormatter(logging.Formatter):
+
+    def format(self, record):
+        record.request_id = get_request_id()
+        return super().format(record)
+
+
+# =========================================================
+# LOGGER FACTORY
+# =========================================================
 def setup_logger(
     name: str = "app",
     log_dir: str = "logs",
@@ -11,34 +39,34 @@ def setup_logger(
     level: str | int = logging.INFO,
     max_bytes: int = 1_000_000,
     backup_count: int = 3,
-    fmt: str = "%(asctime)s [%(levelname)s] %(name)s (%(threadName)s): %(message)s",
+    fmt: str = "%(asctime)s [%(levelname)s] %(name)s [req=%(request_id)s]: %(message)s",
+    disable_werkzeug: bool = True,
 ):
     """
-    Configura logger global reutilizável e seguro para produção/dev.
+    Logger global estruturado com suporte a request_id.
     """
 
     # -----------------------------
-    # Diretório seguro de logs
+    # LOG DIR
     # -----------------------------
     log_path = Path(log_dir)
     log_path.mkdir(parents=True, exist_ok=True)
 
     # -----------------------------
-    # Logger principal
+    # LOGGER BASE
     # -----------------------------
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    # Evita duplicação de handlers
     if logger.handlers:
         logger.handlers.clear()
 
-    logger.propagate = False  # evita duplicar logs no root logger
+    logger.propagate = False
 
-    formatter = logging.Formatter(fmt)
+    formatter = ContextFormatter(fmt)
 
     # -----------------------------
-    # File handler (rotativo)
+    # FILE HANDLER
     # -----------------------------
     file_handler = RotatingFileHandler(
         log_path / log_file,
@@ -50,16 +78,26 @@ def setup_logger(
     file_handler.setLevel(level)
 
     # -----------------------------
-    # Console handler
+    # CONSOLE HANDLER
     # -----------------------------
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
     console_handler.setLevel(level)
 
-    # -----------------------------
-    # Attach handlers
-    # -----------------------------
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
+    # -----------------------------
+    # REDUZ RUÍDO DO FLASK (opcional)
+    # -----------------------------
+    if disable_werkzeug:
+        logging.getLogger("werkzeug").setLevel(logging.WARNING)
+
     return logger
+
+
+# =========================================================
+# HELPER
+# =========================================================
+def get_logger(name: str = "app"):
+    return logging.getLogger(name)

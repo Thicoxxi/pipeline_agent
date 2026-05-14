@@ -1,15 +1,13 @@
 import os
-import uuid
 import logging
 
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, g
+from flask import Flask, render_template, request
 
 # =========================================================
 # LOAD ENV
 # =========================================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
 ENV_PATH = os.path.join(BASE_DIR, ".env")
 
 load_dotenv(ENV_PATH)
@@ -19,7 +17,7 @@ load_dotenv(ENV_PATH)
 # CORE IMPORTS
 # =========================================================
 from core.config import Config
-from core.logger import setup_logger
+from core.logger import setup_logger, set_request_id, get_request_id
 
 from api.routes.stream_routes import stream_bp
 from api.routes.github_routes import github_bp
@@ -31,10 +29,7 @@ from api.routes.gitlab_routes import gitlab_bp
 # =========================================================
 logger = setup_logger()
 
-
-# =========================================================
-# REDUZ RUÍDO DO FLASK/WERKZEUG
-# =========================================================
+# reduz ruído do Flask
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
 
@@ -49,16 +44,15 @@ app = Flask(
 
 
 # =========================================================
-# REQUEST ID (BÁSICO MAS MUITO ÚTIL)
+# REQUEST CONTEXT (GLOBAL)
 # =========================================================
 @app.before_request
-def start_request():
-
-    g.request_id = str(uuid.uuid4())[:8]
+def before_request():
+    set_request_id()
 
     logger.info(
-        "REQUEST START | id=%s method=%s path=%s ip=%s",
-        g.request_id,
+        "REQUEST START | id=%s | %s %s | ip=%s",
+        get_request_id(),
         request.method,
         request.path,
         request.remote_addr
@@ -66,11 +60,11 @@ def start_request():
 
 
 @app.after_request
-def end_request(response):
+def after_request(response):
 
     logger.info(
-        "REQUEST END   | id=%s status=%s",
-        getattr(g, "request_id", "-"),
+        "REQUEST END   | id=%s | status=%s",
+        get_request_id(),
         response.status_code
     )
 
@@ -94,11 +88,11 @@ def home():
 
 
 # =========================================================
-# BOOT LOG (LIMPO)
+# BOOT LOG (CLEAN)
 # =========================================================
-logger.info("=================================================")
+logger.info("=" * 55)
 logger.info("APP STARTING")
-logger.info("=================================================")
+logger.info("=" * 55)
 
 logger.info(
     "ENV | openai=%s groq=%s github=%s gitlab=%s",

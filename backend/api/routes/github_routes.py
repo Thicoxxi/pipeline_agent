@@ -1,10 +1,13 @@
 from flask import Blueprint, request, jsonify
 
 from core.config import Config
+from core.logger import get_logger
 from services.yaml_service import YamlService
 from providers.scm.github_client import create_or_update_workflow
 
 github_bp = Blueprint("github", __name__)
+
+logger = get_logger("github")
 
 
 # =========================================================
@@ -22,15 +25,17 @@ def apply_github_pipeline():
         yaml_content = (data.get("yaml") or "").strip()
 
         # =====================================================
-        # DEBUG (REMOVE EM PRODUÇÃO SE QUISER)
+        # LOG LIMPO (SEM PAYLOAD COMPLETO)
         # =====================================================
-        print("[DEBUG] payload:", data)
-        print("[DEBUG] owner:", owner)
-        print("[DEBUG] repo:", repo)
-        print("[DEBUG] yaml length:", len(yaml_content))
+        logger.info(
+            "GitHub apply | owner=%s repo=%s yaml_size=%s",
+            owner,
+            repo,
+            len(yaml_content)
+        )
 
         # =====================================================
-        # VALIDATION DETAIL (MELHORADO)
+        # VALIDATION
         # =====================================================
         missing_fields = []
 
@@ -54,6 +59,7 @@ def apply_github_pipeline():
         # CONFIG CHECK
         # =====================================================
         if not Config.has_github():
+            logger.error("GitHub token não configurado")
             return jsonify({
                 "success": False,
                 "error": "GITHUB_TOKEN não configurado"
@@ -65,6 +71,8 @@ def apply_github_pipeline():
         valid, validation_msg = YamlService.validate(yaml_content)
 
         if not valid:
+            logger.warning("YAML inválido | %s", validation_msg)
+
             return jsonify({
                 "success": False,
                 "error": validation_msg
@@ -81,14 +89,21 @@ def apply_github_pipeline():
         )
 
         # =====================================================
-        # RESPONSE PATTERN (DICT STANDARD)
+        # RESPONSE
         # =====================================================
         if result.get("success"):
+            logger.info("GitHub workflow aplicado com sucesso")
+
             return jsonify({
                 "success": True,
                 "message": "Workflow aplicado com sucesso no GitHub",
                 "data": result.get("data")
             }), 200
+
+        logger.error(
+            "GitHub error | %s",
+            result.get("error")
+        )
 
         return jsonify({
             "success": False,
@@ -97,6 +112,8 @@ def apply_github_pipeline():
         }), result.get("status_code", 400)
 
     except Exception as e:
+        logger.exception("Erro inesperado no apply_github_pipeline")
+
         return jsonify({
             "success": False,
             "error": str(e)
