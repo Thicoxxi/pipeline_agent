@@ -1,12 +1,8 @@
-import logging
-
 from flask import Blueprint, request, jsonify
 
 from core.config import Config
 from services.yaml_service import YamlService
 from providers.scm.github_client import create_or_update_workflow
-
-logger = logging.getLogger(__name__)
 
 github_bp = Blueprint("github", __name__)
 
@@ -16,27 +12,42 @@ github_bp = Blueprint("github", __name__)
 # =========================================================
 @github_bp.route("/api/github/apply", methods=["POST"])
 def apply_github_pipeline():
+
     try:
         data = request.get_json(force=True) or {}
 
         owner = (data.get("owner") or "").strip()
         repo = (data.get("repo") or "").strip()
         branch = (data.get("branch") or "main").strip()
-        yaml_content = data.get("yaml") or ""
+        yaml_content = (data.get("yaml") or "").strip()
 
         # =====================================================
-        # VALIDATION BASIC
+        # DEBUG (REMOVE EM PRODUÇÃO SE QUISER)
         # =====================================================
-        if not owner or not repo:
-            return jsonify({
-                "success": False,
-                "error": "owner e repo são obrigatórios"
-            }), 400
+        print("[DEBUG] payload:", data)
+        print("[DEBUG] owner:", owner)
+        print("[DEBUG] repo:", repo)
+        print("[DEBUG] yaml length:", len(yaml_content))
 
-        if not yaml_content.strip():
+        # =====================================================
+        # VALIDATION DETAIL (MELHORADO)
+        # =====================================================
+        missing_fields = []
+
+        if not owner:
+            missing_fields.append("owner")
+
+        if not repo:
+            missing_fields.append("repo")
+
+        if not yaml_content:
+            missing_fields.append("yaml")
+
+        if missing_fields:
             return jsonify({
                 "success": False,
-                "error": "YAML vazio"
+                "error": "Campos obrigatórios ausentes",
+                "missing_fields": missing_fields
             }), 400
 
         # =====================================================
@@ -62,26 +73,30 @@ def apply_github_pipeline():
         # =====================================================
         # APPLY
         # =====================================================
-        response = create_or_update_workflow(
+        result = create_or_update_workflow(
             owner=owner,
             repo=repo,
             branch=branch,
             yaml_content=yaml_content
         )
 
-        if response.ok:
+        # =====================================================
+        # RESPONSE PATTERN (DICT STANDARD)
+        # =====================================================
+        if result.get("success"):
             return jsonify({
                 "success": True,
-                "message": "Workflow aplicado com sucesso no GitHub"
+                "message": "Workflow aplicado com sucesso no GitHub",
+                "data": result.get("data")
             }), 200
 
         return jsonify({
             "success": False,
-            "error": response.text
-        }), response.status_code
+            "error": result.get("error", "Erro desconhecido no GitHub"),
+            "data": result.get("data")
+        }), result.get("status_code", 400)
 
     except Exception as e:
-        logger.exception("Erro no apply_github_pipeline")
         return jsonify({
             "success": False,
             "error": str(e)

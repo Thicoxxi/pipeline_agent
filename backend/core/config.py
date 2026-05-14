@@ -1,5 +1,4 @@
 import os
-
 from dotenv import load_dotenv
 
 # =========================================================
@@ -14,15 +13,13 @@ BASE_DIR = os.path.dirname(
 # =========================================================
 # ENV
 # =========================================================
-ENV_FILE = os.path.join(
-    BASE_DIR,
-    ".env"
-)
+ENV_FILE = os.path.join(BASE_DIR, ".env")
 
 load_dotenv(
     dotenv_path=ENV_FILE,
     override=True
 )
+
 
 # =========================================================
 # CONFIG
@@ -32,37 +29,29 @@ class Config:
     # =====================================================
     # LLM
     # =====================================================
-    OPENAI_API_KEY = os.getenv(
-        "OPENAI_API_KEY",
-        ""
-    ).strip()
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
-    GROQ_API_KEY = os.getenv(
-        "GROQ_API_KEY",
-        ""
+    # =====================================================
+    # SCM - GitHub
+    # =====================================================
+    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "").strip()
+
+    # FIX: padronização correta (compatível com client)
+    GITHUB_API_URL = os.getenv(
+        "GITHUB_API_URL",
+        os.getenv("GITHUB_URL", "https://api.github.com")
     ).strip()
 
     # =====================================================
-    # SCM
+    # SCM - GitLab
     # =====================================================
-    GITHUB_TOKEN = os.getenv(
-        "GITHUB_TOKEN",
-        ""
-    ).strip()
+    GITLAB_TOKEN = os.getenv("GITLAB_TOKEN", "").strip()
 
-    GITHUB_URL = os.getenv(
-        "GITHUB_URL",
-        "https://api.github.com"
-    ).strip()
-
-    GITLAB_TOKEN = os.getenv(
-        "GITLAB_TOKEN",
-        ""
-    ).strip()
-
-    GITLAB_URL = os.getenv(
-        "GITLAB_URL",
-        "https://gitlab.com/api/v4"
+    # FIX: padronização correta (compatível com client)
+    GITLAB_API_URL = os.getenv(
+        "GITLAB_API_URL",
+        os.getenv("GITLAB_URL", "https://gitlab.com/api/v4")
     ).strip()
 
     # =====================================================
@@ -70,14 +59,10 @@ class Config:
     # =====================================================
     @classmethod
     def has_openai(cls):
-
-        return bool(
-            cls.OPENAI_API_KEY
-        )
+        return bool(cls.OPENAI_API_KEY)
 
     @classmethod
     def openai_key(cls):
-
         return cls.OPENAI_API_KEY
 
     # =====================================================
@@ -85,14 +70,10 @@ class Config:
     # =====================================================
     @classmethod
     def has_groq(cls):
-
-        return bool(
-            cls.GROQ_API_KEY
-        )
+        return bool(cls.GROQ_API_KEY)
 
     @classmethod
     def groq_key(cls):
-
         return cls.GROQ_API_KEY
 
     # =====================================================
@@ -100,40 +81,30 @@ class Config:
     # =====================================================
     @classmethod
     def has_github(cls):
-
-        return bool(
-            cls.GITHUB_TOKEN
-        )
+        return bool(cls.GITHUB_TOKEN)
 
     @classmethod
     def github_token(cls):
-
         return cls.GITHUB_TOKEN
 
     @classmethod
     def github_url(cls):
-
-        return cls.GITHUB_URL
+        return cls.GITHUB_API_URL
 
     # =====================================================
     # GITLAB
     # =====================================================
     @classmethod
     def has_gitlab(cls):
-
-        return bool(
-            cls.GITLAB_TOKEN
-        )
+        return bool(cls.GITLAB_TOKEN)
 
     @classmethod
     def gitlab_token(cls):
-
         return cls.GITLAB_TOKEN
 
     @classmethod
     def gitlab_url(cls):
-
-        return cls.GITLAB_URL
+        return cls.GITLAB_API_URL
 
     # =====================================================
     # DEFAULT PROVIDER
@@ -155,14 +126,8 @@ class Config:
     @classmethod
     def validate(cls):
 
-        if not (
-            cls.has_groq()
-            or cls.has_openai()
-        ):
-
-            print(
-                "[WARNING] Nenhum provider LLM configurado"
-            )
+        if not (cls.has_groq() or cls.has_openai()):
+            print("[WARNING] Nenhum provider LLM configurado")
 
     # =====================================================
     # SUMMARY
@@ -171,24 +136,8 @@ class Config:
     def summary(cls):
 
         return {
-
-            "openai":
-                "OK"
-                if cls.has_openai()
-                else "MISSING",
-
-            "groq":
-                "OK"
-                if cls.has_groq()
-                else "MISSING",
-
-            "github":
-                "OK"
-                if cls.has_github()
-                else "MISSING",
-
-            "gitlab":
-                "OK"
-                if cls.has_gitlab()
-                else "MISSING",
+            "openai": "OK" if cls.has_openai() else "MISSING",
+            "groq": "OK" if cls.has_groq() else "MISSING",
+            "github": "OK" if cls.has_github() else "MISSING",
+            "gitlab": "OK" if cls.has_gitlab() else "MISSING",
         }

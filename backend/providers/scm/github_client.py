@@ -1,5 +1,4 @@
 import base64
-
 import requests
 
 from core.config import Config
@@ -9,24 +8,23 @@ from core.config import Config
 # CREATE OR UPDATE WORKFLOW
 # =========================================================
 def create_or_update_workflow(
-
     owner: str,
-
     repo: str,
-
     branch: str,
-
     yaml_content: str
 ):
 
     base_url = Config.GITHUB_API_URL.rstrip("/")
-
     token = Config.GITHUB_TOKEN
 
-    workflow_path = (
-        ".github/workflows/"
-        "pipeline.yml"
-    )
+    if not token:
+        return {
+            "success": False,
+            "error": "GITHUB_TOKEN não configurado",
+            "status_code": 500
+        }
+
+    workflow_path = ".github/workflows/pipeline.yml"
 
     url = (
         f"{base_url}/repos/"
@@ -35,80 +33,63 @@ def create_or_update_workflow(
     )
 
     headers = {
-
-        "Authorization":
-            f"Bearer {token}",
-
-        "Accept":
-            "application/vnd.github+json"
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json"
     }
 
     # =====================================================
-    # CHECK FILE
+    # CHECK FILE EXISTS
     # =====================================================
     check = requests.get(
-
         url,
-
         headers=headers,
-
-        params={
-            "ref": branch
-        }
+        params={"ref": branch}
     )
 
     sha = None
-
     if check.status_code == 200:
-
         sha = check.json().get("sha")
 
     # =====================================================
     # PAYLOAD
     # =====================================================
     payload = {
-
-        "message":
-            "update github actions workflow",
-
-        "content":
-            base64.b64encode(
-                yaml_content.encode()
-            ).decode(),
-
-        "branch":
-            branch
+        "message": "update github actions workflow",
+        "content": base64.b64encode(
+            yaml_content.encode("utf-8")
+        ).decode("utf-8"),
+        "branch": branch
     }
 
-    # =====================================================
-    # UPDATE
-    # =====================================================
     if sha:
-
         payload["sha"] = sha
 
     # =====================================================
-    # CREATE/UPDATE
+    # REQUEST
     # =====================================================
-    response = requests.put(
+    try:
+        response = requests.put(
+            url,
+            headers=headers,
+            json=payload
+        )
 
-        url,
+        if response.ok:
+            return {
+                "success": True,
+                "data": response.json(),
+                "status_code": 200
+            }
 
-        headers=headers,
+        return {
+            "success": False,
+            "error": response.text,
+            "status_code": response.status_code
+        }
 
-        json=payload
-    )
-
-    # =====================================================
-    # RESULT
-    # =====================================================
-    if response.ok:
-
-        return response.json()
-
-    raise Exception(
-
-        f"GitHub Error: "
-        f"{response.status_code} - "
-        f"{response.text}"
-    )
+    except requests.RequestException as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "status_code": 500
+        }

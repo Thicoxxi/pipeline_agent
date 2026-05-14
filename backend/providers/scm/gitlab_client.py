@@ -7,7 +7,7 @@ from core.config import Config
 # GITLAB API
 # =========================================================
 BASE_URL = (
-    Config.GITLAB_URL.rstrip("/")
+    Config.GITLAB_API_URL.rstrip("/")
 )
 
 TOKEN = (
