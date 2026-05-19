@@ -78,6 +78,18 @@ def setup_logger(
     file_handler.setLevel(level)
 
     # -----------------------------
+    # ERROR FILE HANDLER (separate arquivo para erros)
+    # -----------------------------
+    error_handler = RotatingFileHandler(
+        log_path / "error.log",
+        maxBytes=max_bytes,
+        backupCount=backup_count,
+        encoding="utf-8",
+    )
+    error_handler.setFormatter(formatter)
+    error_handler.setLevel(logging.ERROR)
+
+    # -----------------------------
     # CONSOLE HANDLER
     # -----------------------------
     console_handler = logging.StreamHandler()
@@ -85,6 +97,7 @@ def setup_logger(
     console_handler.setLevel(level)
 
     logger.addHandler(file_handler)
+    logger.addHandler(error_handler)
     logger.addHandler(console_handler)
 
     # -----------------------------

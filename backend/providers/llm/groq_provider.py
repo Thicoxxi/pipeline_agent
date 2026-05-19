@@ -1,6 +1,7 @@
 import logging
 
 from groq import Groq
+import groq as groq_lib
 from core.config import Config
 
 logger = logging.getLogger(__name__)
@@ -73,24 +74,61 @@ class GroqProvider:
         logger.info("[GROQ] iniciando stream")
 
         system_prompt = system_prompt or DEFAULT_SYSTEM_PROMPT
+        # Tentativas com redução progressiva do tamanho máximo de saída.
+        # Se o Groq retornar 400 pedindo para reduzir comprimento, tentamos novamente
+        # com valores menores de max_output_tokens e, se necessário, um system prompt reduzido.
+        attempts = [2048, 1024, 512]
+        last_exc = None
 
-        completion = self.client.chat.completions.create(
-            model=self.model,
-            stream=True,
-            temperature=0.2,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt},
-            ],
-        )
 
-        for chunk in completion:
+        for max_tokens in attempts:
             try:
-                content = chunk.choices[0].delta.content
-                if content:
-                    # remove qualquer ``` que o modelo insista em gerar
-                    if content.strip().startswith("```"):
+                # Ajustar prompts conforme a tentativa — não passamos max_output_tokens
+                effective_system = system_prompt
+                effective_prompt = prompt
+
+                if max_tokens <= 1024:
+                    effective_system = (
+                        "Você é um engenheiro DevOps especialista em CI/CD. Retorne APENAS YAML puro, sem explicações."
+                    )
+
+                # Truncar prompt do usuário se estiver muito longo
+                # usar os últimos caracteres para manter contexto relevante (caminho, instruções)
+                if len(effective_prompt) > max_tokens * 2:
+                    effective_prompt = effective_prompt[-(max_tokens * 2):]
+
+                completion = self.client.chat.completions.create(
+                    model=self.model,
+                    stream=True,
+                    temperature=0.2,
+                    messages=[
+                        {"role": "system", "content": effective_system},
+                        {"role": "user", "content": effective_prompt},
+                    ],
+                )
+
+                for chunk in completion:
+                    try:
+                        content = chunk.choices[0].delta.content
+                        if content:
+                            # remove qualquer ``` que o modelo insista em gerar
+                            if content.strip().startswith("```"):
+                                continue
+                            yield content
+                    except Exception:
                         continue
-                    yield content
-            except Exception:
+
+                return
+
+            except groq_lib.BadRequestError as e:
+                logger.warning(f"[GROQ] BadRequestError on attempt with max_tokens_hint={max_tokens}: {e}")
+                last_exc = e
                 continue
+            except Exception as e:
+                logger.exception("[GROQ] erro inesperado no stream")
+                last_exc = e
+                break
+
+        # se nenhuma tentativa obteve sucesso, propagar a última exceção
+        if last_exc:
+            raise last_exc

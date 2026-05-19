@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request
 
 from services.project_analyzer_service import (
     ProjectAnalyzerService
@@ -8,7 +8,6 @@ analyze_bp = Blueprint(
     "analyze",
     __name__
 )
-
 
 # =========================================================
 # ANALYZE PROJECT
@@ -21,9 +20,14 @@ def analyze_project():
 
     try:
 
-        data = request.get_json(force=True) or {}
+        data = request.get_json(
+            force=True
+        ) or {}
 
-        files = data.get("files", [])
+        files = data.get(
+            "files",
+            []
+        )
 
         provider = data.get(
             "provider",
@@ -35,27 +39,45 @@ def analyze_project():
             "gitlab"
         )
 
-        if not files:
-
-            return jsonify({
-                "success": False,
-                "error": "Nenhum arquivo enviado"
-            }), 400
-
-        pipeline = ProjectAnalyzerService.analyze(
-            files=files,
-            provider=provider,
-            platform=platform
+        entry = data.get(
+            "entry",
+            None
         )
 
-        return jsonify({
-            "success": True,
-            "pipeline": pipeline
-        })
+        if not files:
+
+            return (
+                "No files provided",
+                400,
+                {
+                    "Content-Type": "text/plain"
+                }
+            )
+
+        result = ProjectAnalyzerService.analyze(
+            files=files,
+            provider=provider,
+            platform=platform,
+            entry_file=entry
+        )
+
+        # =====================================================
+        # RETURN PURE YAML
+        # =====================================================
+        return (
+            result,
+            200,
+            {
+                "Content-Type": "text/plain"
+            }
+        )
 
     except Exception as e:
 
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        return (
+            str(e),
+            500,
+            {
+                "Content-Type": "text/plain"
+            }
+        )

@@ -1,0 +1,100 @@
+{
+  "name": "pipeline-generator-ai",
+  "displayName": "Pipeline Generator AI",
+  "description": "AI CI/CD Pipeline Generator for GitLab CI and GitHub Actions",
+  "version": "0.0.1",
+  "publisher": "thiagoliberati",
+  "license": "MIT",
+  "icon": "images/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "devops",
+    "pipeline",
+    "gitlab",
+    "github",
+    "github-actions",
+    "ci",
+    "cd",
+    "yaml",
+    "openai",
+    "groq",
+    "ai",
+    "terraform",
+    "docker"
+  ],
+  "activationEvents": [
+    "onCommand:pipeline-generator-ai.analyzeProject",
+    "onCommand:pipeline-generator-ai.generatePipeline",
+    "onCommand:pipeline-generator-ai.openChat"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+      "commands": [
+      {
+        "command": "pipeline-generator-ai.analyzeProject",
+        "title": "Pipeline Generator AI: Analyze Project"
+      },
+      {
+        "command": "pipeline-generator-ai.generatePipeline",
+        "title": "Pipeline Generator AI: Generate Pipeline"
+      }
+      ,
+      {
+        "command": "pipeline-generator-ai.openChat",
+        "title": "Pipeline Generator AI: Open Chat"
+      }
+    ],
+    "configuration": {
+      "title": "Pipeline Generator AI",
+      "properties": {
+        "pipelineGeneratorAI.apiUrl": {
+          "type": "string",
+          "default": "http://localhost:5000",
+          "description": "Backend API URL"
+        },
+        "pipelineGeneratorAI.provider": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "openai",
+            "groq",
+            "local"
+          ],
+          "description": "LLM provider"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "test": "node ./test/runTest.js",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thiagoliberati/pipeline-generator-ai"
+  },
+  "homepage": "https://github.com/thiagoliberati/pipeline-generator-ai",
+  "bugs": {
+    "url": "https://github.com/thiagoliberati/pipeline-generator-ai/issues"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.19.19",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.2.2",
+    "eslint": "^9.39.3"
+  },
+  "dependencies": {
+    "axios": "^1.16.1"
+  }
+}

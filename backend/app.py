@@ -1,5 +1,6 @@
 import os
 import logging
+import base64
 from time import perf_counter
 
 from dotenv import load_dotenv
@@ -45,11 +46,15 @@ from api.routes.gitlab_routes import (
 from api.routes.analyze_routes import (
     analyze_bp
 )
+from api.routes.log_routes import (
+    log_bp
+)
 
 # =========================================================
 # LOGGER
 # =========================================================
-logger = setup_logger()
+# Ensure logs are written to the backend folder regardless of CWD
+logger = setup_logger(log_dir=os.path.join(BASE_DIR, "logs"))
 
 # =========================================================
 # REDUZ RUÍDO DO FLASK/WERKZEUG
@@ -139,6 +144,46 @@ def handle_exception(error):
 
 
 # =========================================================
+# NOT FOUND (404) - handle missing static files like favicon
+# =========================================================
+@app.errorhandler(404)
+def handle_not_found(error):
+
+    logger.info(
+        "NOT FOUND | path=%s",
+        request.path
+    )
+
+    return {
+        "success": False,
+        "error": "Not found"
+    }, 404
+
+
+# =========================================================
+# FAVICON
+# Serve a favicon if present in the static folder, otherwise
+# return a 204 to avoid spamming logs with 404 errors.
+# =========================================================
+@app.route("/favicon.ico")
+def favicon():
+
+    try:
+        return app.send_static_file("favicon.ico")
+    except Exception:
+        # Return a tiny 1x1 transparent PNG so browsers get a valid image
+        png_base64 = (
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII="
+        )
+
+        png_bytes = base64.b64decode(png_base64)
+
+        from flask import Response
+
+        return Response(png_bytes, mimetype="image/png")
+
+
+# =========================================================
 # BLUEPRINTS
 # =========================================================
 app.register_blueprint(
@@ -155,6 +200,10 @@ app.register_blueprint(
 
 app.register_blueprint(
     analyze_bp
+)
+
+app.register_blueprint(
+    log_bp
 )
 
 # =========================================================

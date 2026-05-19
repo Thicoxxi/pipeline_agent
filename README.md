@@ -1,6 +1,109 @@
 # 🚀 Pipeline Generator AI
 
 Aplicação web para geração automática de pipelines CI/CD utilizando IA, com suporte para:
+# Pipeline Agent / Pipeline Generator AI
+
+Resumo rápido
+-
+Projeto que reúne um backend Python (Flask) que orquestra provedores LLM (OpenAI, Groq, local) para gerar e analisar pipelines CI/CD, e uma extensão VS Code (`vscode-extension/pipeline-generator-ai`) que fornece uma interface de chat e comandos para gerar/abrir pipelines no editor.
+
+Principais componentes
+-
+- `backend/` — Flask app que expõe endpoints:
+  - `POST /api/stream` — stream SSE para geração incremental de pipelines
+  - `POST /api/analyze-project` — analisa arquivos do projeto e retorna YAML da pipeline
+  - `POST /api/log` — endpoint para receber logs da extensão e persistir em `backend/logs/app.log` / `backend/logs/error.log`
+  - `core/logger.py` — logger com `app.log` e `error.log` separados
+
+- `vscode-extension/pipeline-generator-ai/` — extensão VS Code
+  - comandos: `analyzeProject`, `generatePipeline`, `openChat`
+  - `extension.js` — implementação do Webview chat, escaneamento do workspace e chamadas ao backend
+
+Como rodar o backend (desenvolvimento)
+-
+1. Crie e ative um virtualenv (ex.: `.venv`) e instale dependências:
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+2. Configure variáveis de ambiente em `backend/.env` (ex.: `GROQ_API_KEY`, `OPENAI_API_KEY`, `GITHUB_TOKEN`, `GITLAB_TOKEN`).
+
+3. Inicie o app:
+
+```bash
+python app.py
+```
+
+O servidor roda por padrão em `http://0.0.0.0:5000` e grava logs em `backend/logs/app.log` e `backend/logs/error.log`.
+
+Como usar a extensão localmente
+-
+1. Abra a pasta `vscode-extension/pipeline-generator-ai` no VS Code.
+2. Instale dependências da extensão (dentro da pasta da extensão):
+
+```bash
+cd vscode-extension/pipeline-generator-ai
+npm install
+```
+
+3. Pressione F5 no VS Code para abrir um Extension Development Host. Certifique-se que o backend está em execução.
+
+4. No Extension Host: use `Pipeline Generator AI: Open Chat` para abrir o webview, ou execute os comandos `Generate Pipeline` / `Analyze Project` via Command Palette.
+
+Log forwarding
+-
+A extensão encaminha os `console.*` ao endpoint `POST /api/log` do backend, que grava as mensagens em `backend/logs/app.log` e mensagens `ERROR` em `backend/logs/error.log`.
+
+Gerar o pacote `.vsix` (empacotar extensão)
+-
+Pré-requisitos: `node` e `npm` instalados. O projeto já inclui scripts em `vscode-extension/pipeline-generator-ai/package.json`.
+
+1. Na pasta da extensão:
+
+```bash
+cd vscode-extension/pipeline-generator-ai
+npm run package
+# ou
+npx vsce package --out pipeline-generator-ai-<version>.vsix
+```
+
+2. Teste instalando localmente no VS Code:
+
+```bash
+code --install-extension pipeline-generator-ai-<version>.vsix
+```
+
+Publicar no Visual Studio Marketplace
+-
+1. Crie um publisher no Marketplace e obtenha um Personal Access Token (PAT).
+2. Faça login com `vsce` ou defina `VSCE_PAT`:
+
+```bash
+npx vsce login <publisher>
+npx vsce publish
+# ou com env var
+export VSCE_PAT="<your_pat>"
+npx vsce publish
+```
+
+Dicas e considerações
+-
+- Atualize `version` em `vscode-extension/pipeline-generator-ai/package.json` antes de publicar.
+- Evite incluir segredos nos arquivos enviados ao backend — a extensão corta o conteúdo lido dos arquivos para evitar prompts enormes, mas revise o comportamento para dados sensíveis.
+- Se encontrar erros do LLM (ex.: `Please reduce the length of the messages or completion`), o backend tenta re-tentar com prompts menores; você pode ajustar `providers/llm/groq_provider.py`.
+
+Contribuições e troubleshooting
+-
+- Logs do backend: `backend/logs/app.log` e `backend/logs/error.log`.
+- Se a extensão não abrir ou o comando falhar, verifique o Console do Extension Host (Help → Toggle Developer Tools → Console) e os logs do backend.
+- Para dúvidas, abra uma issue no repositório ou me peça para rodar passos de diagnóstico.
+
+---
+Arquivo atualizado automaticamente pelo assistente de desenvolvimento.
 
 - GitLab CI/CD
 - GitHub Actions
